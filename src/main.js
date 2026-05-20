@@ -63,6 +63,7 @@ const params = {
   time_pace: 1,
   scene_offset_y: 0,
   vector_magnitude: 0.1
+  
 };
 
 // =========================

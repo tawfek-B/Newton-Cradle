@@ -15,7 +15,7 @@ export class Ball {
     constructor(x = 0) {
 
         this.theta = 0;
-        this.omega = 0;
+        this.omega = 0; 
         this.prevTheta = this.theta;
 
         this.radius = 0.2;
@@ -77,7 +77,7 @@ export class Ball {
 
         this.ropeNodeMass = 0.01;
 
-        this.ropeStiffness = 300;
+        this.ropeStiffness = 600;
 
         this.ropeDamping = 10;
 

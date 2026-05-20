@@ -53,7 +53,7 @@ function stepSingleRope(
         );
 
     const maxExt =
-        segRest * 0.05;
+        segRest * 0.1;
 
     const extEps =
         segRest * 0.02;

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 function isFiniteVec3(v) {
+
     return Number.isFinite(v.x)
         && Number.isFinite(v.y)
         && Number.isFinite(v.z);
@@ -31,7 +32,7 @@ export class Rope {
         this.nodes = [];
         this.vels = [];
 
-        this.restLength = 0;
+        this.restLength = 1;
 
         this.line = new THREE.Line(
             new THREE.BufferGeometry(),
@@ -53,11 +54,14 @@ export class Rope {
         this.vels = [];
 
         this.restLength =
-            this.anchor.distanceTo(this.ball.pos);
+            this.anchor.distanceTo(
+                this.ball.pos
+            );
 
         for (let i = 1; i < this.segments; i++) {
 
-            const t = i / this.segments;
+            const t =
+                i / this.segments;
 
             const p =
                 this.anchor.clone().lerp(
@@ -74,12 +78,25 @@ export class Rope {
     }
 
     // =====================================================
+    // SET LENGTH
+    // =====================================================
+
+    setLength(length) {
+
+        this.restLength = length;
+
+        this.reset();
+    }
+
+    // =====================================================
     // SAFE NODE ACCESS
     // =====================================================
 
     getSafeNodes() {
 
-        return this.nodes.filter(isFiniteVec3);
+        return this.nodes.filter(
+            isFiniteVec3
+        );
     }
 
     // =====================================================
@@ -88,20 +105,69 @@ export class Rope {
 
     syncGeometry() {
 
+        // =============================================
+        // REBUILD IF GEOMETRY CORRUPTED
+        // =============================================
+
+        const expectedSegLength =
+            this.restLength /
+            this.segments;
+
+        let rebuild = false;
+
+        for (
+            let i = 0;
+            i < this.nodes.length - 1;
+            i++
+        ) {
+
+            const d =
+                this.nodes[i]
+                    .distanceTo(
+                        this.nodes[i + 1]
+                    );
+
+            if (
+                Math.abs(
+                    d - expectedSegLength
+                ) >
+                expectedSegLength * 0.5
+            ) {
+
+                rebuild = true;
+                break;
+            }
+        }
+
         const safeNodes =
             this.getSafeNodes();
 
-        if (safeNodes.length !== this.nodes.length) {
+        if (
+            safeNodes.length !==
+            this.nodes.length ||
+            rebuild
+        ) {
+
             this.reset();
         }
 
+        // =============================================
+        // UPDATE GEOMETRY
+        // =============================================
+
         const points = [
+
             this.anchor,
+
             ...this.nodes,
+
             this.ball.pos
+
         ].filter(isFiniteVec3);
 
-        this.line.geometry.setFromPoints(points);
+        this.line.geometry.setFromPoints(
+            points
+        );
     }
 
     // =====================================================
