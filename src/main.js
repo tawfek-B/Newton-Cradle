@@ -62,9 +62,27 @@ const params = {
   angle: 90,
   time_pace: 1,
   scene_offset_y: 0,
-  vector_magnitude: 0.1
-  
+  vector_magnitude: 0.1,
+  materialType: 'metal'
 };
+
+
+
+// =====================================================
+// دالة تغيير المادة (سيتم استدعاؤها من الـ GUI)
+// =====================================================
+function handleMaterialChange(type) {
+    ball.setMaterialType(type);
+    console.log(`تم تغيير المادة إلى: ${type}`);
+}
+
+// ربط الدالة بالـ params حتى تتمكن الـ UI من استدعائها
+params.onMaterialChange = handleMaterialChange;
+
+
+
+
+
 
 // =========================
 // RESET ANGLE
@@ -91,6 +109,11 @@ function setAngle() {
 // =========================
 createGUI(params, settings, setAngle);
 createHUD();
+
+
+
+// بدء الكرة بالمادة الافتراضية (معدن)
+ball.setMaterialType(params.materialType);
 
 // =========================
 // LOOP

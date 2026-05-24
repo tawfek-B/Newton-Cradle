@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-
+import { MATERIALS } from "../physics/Materials.js";
 import { DEBUG } from '../core/Constants.js';
 import { Rope } from './Rope.js';
 import { createBallDebug } from '../core/Debug.js';
@@ -11,252 +11,271 @@ function isFiniteVec3(v) {
 }
 
 export class Ball {
+  constructor(x = 0) {
+    this.theta = 0;
+    this.omega = 0;
+    this.prevTheta = this.theta;
 
-    constructor(x = 0) {
+    this.radius = 0.2;
+    this.mass = 1;
 
-        this.theta = 0;
-        this.omega = 0; 
-        this.prevTheta = this.theta;
+    this.restitution = 0.85; // Default restitution (bounciness)
+    this.friction = 0.2;
+    this.damping = 0.01;
 
-        this.radius = 0.2;
-        this.mass = 1;
+    this.debug = null;
 
-        this.debug = null;
+    this.omegaVec = new THREE.Vector3();
+    this.alphaVec = new THREE.Vector3();
 
-        this.omegaVec = new THREE.Vector3();
-        this.alphaVec = new THREE.Vector3();
+    this.anchorA = new THREE.Vector3(x, 2, 0.5);
 
-        this.anchorA =
-            new THREE.Vector3(x, 2, 0.5);
+    this.anchorB = new THREE.Vector3(x, 2, -0.5);
 
-        this.anchorB =
-            new THREE.Vector3(x, 2, -0.5);
+    this.pivot = new THREE.Vector3(x, 2, 0);
 
-        this.pivot =
-            new THREE.Vector3(x, 2, 0);
+    this.length = 1;
 
-        this.length = 1;
+    this.pos = new THREE.Vector3(this.pivot.x, this.pivot.y - this.length, 0);
 
-        this.pos = new THREE.Vector3(
-            this.pivot.x,
-            this.pivot.y - this.length,
-            0
-        );
+    this.vel = new THREE.Vector3();
+    this.acc = new THREE.Vector3();
 
-        this.vel = new THREE.Vector3();
-        this.acc = new THREE.Vector3();
+    // =====================================================
+    // (MATERIALS)
+    // =====================================================
+    this.materials = {
+      metal: null,
+      rubber: null,
+      wood: null,
+    };
 
-        // =====================================================
-        // BALL MESH
-        // =====================================================
+    this.currentMaterialType = "metal"; // start with metal by default
+    const textureLoader = new THREE.TextureLoader();
 
-        const geometry =
-            new THREE.SphereGeometry(
-                this.radius,
-                32,
-                32
-            );
+    // (Metal)
+    const metalAlbedo = textureLoader.load(
+      "public/balls/blue_metal_plate_disp_4k.png",
+    );
+ 
 
-        const material =
-            new THREE.MeshStandardMaterial({
-                color: 0x909090,
-                metalness: 1
-            });
+    this.materials.metal = new THREE.MeshStandardMaterial({
+      map: metalAlbedo,
+      roughness: 0.3,
+      metalness: 0.95,
+      color: 0xffffff,
+    });
 
-        this.mesh =
-            new THREE.Mesh(
-                geometry,
-                material
-            );
+    // (Rubber)
+    const rubberAlbedo = textureLoader.load(
+      "public/balls/baseball_playground_diff_2k.jpg",
+    );
+   
 
-        // =====================================================
-        // ROPE SETTINGS
-        // =====================================================
+    this.materials.rubber = new THREE.MeshStandardMaterial({
+      map: rubberAlbedo,
+      roughness: 0.9,
+      metalness: 0.05,
+      color: 0xcccccc,
+    });
 
-        this.ropeSegments = 8;
+    // (Wood)
+    const woodAlbedo = textureLoader.load(
+      "public/balls/rosewood_veneer1_diff_2k.jpg",
+    );
 
-        this.ropeNodeMass = 0.01;
+    this.materials.wood = new THREE.MeshStandardMaterial({
+      map: woodAlbedo,
+      roughness: 0.7,
+      metalness: 0.02,
+      color: 0xffffff,
+    });
+    // =====================================================
+    // BALL MESH
+    // =====================================================
 
-        this.ropeStiffness = 600;
+    const geometry = new THREE.SphereGeometry(this.radius, 32, 32);
 
-        this.ropeDamping = 10;
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x909090,
+      metalness: 1,
+    });
 
-        this.ropeAirDrag = 0.01;
+    this.mesh = new THREE.Mesh(geometry, material);
 
-        // =====================================================
-        // ROPES
-        // =====================================================
+    // =====================================================
+    // ROPE SETTINGS
+    // =====================================================
 
-        this.ropeA = new Rope({
-            anchor: this.anchorA,
-            ball: this,
-            segments: this.ropeSegments,
-            nodeMass: this.ropeNodeMass,
-            stiffness: this.ropeStiffness,
-            damping: this.ropeDamping,
-            airDrag: this.ropeAirDrag
-        });
+    this.ropeSegments = 8;
 
-        this.ropeB = new Rope({
-            anchor: this.anchorB,
-            ball: this,
-            segments: this.ropeSegments,
-            nodeMass: this.ropeNodeMass,
-            stiffness: this.ropeStiffness,
-            damping: this.ropeDamping,
-            airDrag: this.ropeAirDrag
-        });
+    this.ropeNodeMass = 0.01;
 
-        // =====================================================
-        // TRAIL
-        // =====================================================
+    this.ropeStiffness = 600;
 
-        this.trailPoints = [];
+    this.ropeDamping = 10;
 
-        this.maxTrail =
-            DEBUG.SHOW_TRAIL
-                ? 1000
-                : 0;
+    this.ropeAirDrag = 0.01;
 
-        this.trailGeometry =
-            new THREE.BufferGeometry();
+    // =====================================================
+    // ROPES
+    // =====================================================
 
-        this.trailMaterial =
-            new THREE.LineBasicMaterial({
-                vertexColors: true
-            });
+    this.ropeA = new Rope({
+      anchor: this.anchorA,
+      ball: this,
+      segments: this.ropeSegments,
+      nodeMass: this.ropeNodeMass,
+      stiffness: this.ropeStiffness,
+      damping: this.ropeDamping,
+      airDrag: this.ropeAirDrag,
+    });
 
-        this.trailLine =
-            new THREE.Line(
-                this.trailGeometry,
-                this.trailMaterial
-            );
+    this.ropeB = new Rope({
+      anchor: this.anchorB,
+      ball: this,
+      segments: this.ropeSegments,
+      nodeMass: this.ropeNodeMass,
+      stiffness: this.ropeStiffness,
+      damping: this.ropeDamping,
+      airDrag: this.ropeAirDrag,
+    });
+
+    // =====================================================
+    // TRAIL
+    // =====================================================
+
+    this.trailPoints = [];
+
+    this.maxTrail = DEBUG.SHOW_TRAIL ? 1000 : 0;
+
+    this.trailGeometry = new THREE.BufferGeometry();
+
+    this.trailMaterial = new THREE.LineBasicMaterial({
+      vertexColors: true,
+    });
+
+    this.trailLine = new THREE.Line(this.trailGeometry, this.trailMaterial);
+  }
+
+  setPhysicalMaterial(physicalMat) {
+    this.restitution = physicalMat.restitution;
+    this.friction = physicalMat.friction;
+    this.damping = physicalMat.damping;
+    // if you want to link density to mass (assuming constant volume)
+    const volume = (4/3) * Math.PI * Math.pow(this.radius, 3);
+    this.mass = physicalMat.density * volume;
+  }
+
+  setMaterialType(type) {
+    // تغيير المادة البصرية (التي أضفتها سابقاً)
+    if (type === "metal" && this.materials.metal) {
+      this.mesh.material = this.materials.metal;
+      this.currentMaterialType = "metal";
+      this.setPhysicalMaterial(MATERIALS.METAL);
+
+    } else if (type === "rubber" && this.materials.rubber) {
+      this.mesh.material = this.materials.rubber;
+      this.currentMaterialType = "rubber";
+      this.setPhysicalMaterial(MATERIALS.RUBBER);
+
+    } else if (type === "wood" && this.materials.wood) {
+      this.mesh.material = this.materials.wood;
+      this.currentMaterialType = "wood";
+      this.setPhysicalMaterial(MATERIALS.WOOD);
+    }
+  }
+
+  // =====================================================
+  // RESET ROPES
+  // =====================================================
+
+  resetRopes() {
+    this.ropeA.reset();
+    this.ropeB.reset();
+  }
+
+  // =====================================================
+  // SCENE
+  // =====================================================
+
+  addToScene(scene) {
+    scene.add(this.mesh);
+
+    this.ropeA.addToScene(scene);
+    this.ropeB.addToScene(scene);
+
+    scene.add(this.trailLine);
+  }
+
+  // =====================================================
+  // MESH SYNC
+  // =====================================================
+
+  syncMesh() {
+    if (!isFiniteVec3(this.pos)) {
+      this.pos.set(this.pivot.x, this.pivot.y - this.length, 0);
+
+      this.vel.set(0, 0, 0);
+
+      this.resetRopes();
     }
 
+    this.mesh.position.copy(this.pos);
+
+    this.ropeA.syncGeometry();
+    this.ropeB.syncGeometry();
+
     // =====================================================
-    // RESET ROPES
+    // TRAIL
     // =====================================================
 
-    resetRopes() {
-
-        this.ropeA.reset();
-        this.ropeB.reset();
+    if (isFiniteVec3(this.pos)) {
+      this.trailPoints.push(this.pos.clone());
     }
 
-    // =====================================================
-    // SCENE
-    // =====================================================
-
-    addToScene(scene) {
-
-        scene.add(this.mesh);
-
-        this.ropeA.addToScene(scene);
-        this.ropeB.addToScene(scene);
-
-        scene.add(this.trailLine);
+    if (this.trailPoints.length > this.maxTrail) {
+      this.trailPoints.shift();
     }
 
-    // =====================================================
-    // MESH SYNC
-    // =====================================================
+    const positions = [];
+    const colors = [];
 
-    syncMesh() {
+    for (let i = 0; i < this.trailPoints.length; i++) {
+      const p = this.trailPoints[i];
 
-        if (!isFiniteVec3(this.pos)) {
+      if (!isFiniteVec3(p)) continue;
 
-            this.pos.set(
-                this.pivot.x,
-                this.pivot.y - this.length,
-                0
-            );
+      positions.push(p.x, p.y, p.z);
 
-            this.vel.set(0, 0, 0);
+      const t = i / this.trailPoints.length;
 
-            this.resetRopes();
-        }
+      const color = new THREE.Color();
 
-        this.mesh.position.copy(this.pos);
+      color.setHSL(t, 1.0, 0.4);
 
-        this.ropeA.syncGeometry();
-        this.ropeB.syncGeometry();
-
-        // =====================================================
-        // TRAIL
-        // =====================================================
-
-        if (isFiniteVec3(this.pos)) {
-            this.trailPoints.push(
-                this.pos.clone()
-            );
-        }
-
-        if (this.trailPoints.length > this.maxTrail) {
-            this.trailPoints.shift();
-        }
-
-        const positions = [];
-        const colors = [];
-
-        for (let i = 0; i < this.trailPoints.length; i++) {
-
-            const p = this.trailPoints[i];
-
-            if (!isFiniteVec3(p)) continue;
-
-            positions.push(
-                p.x,
-                p.y,
-                p.z
-            );
-
-            const t =
-                i / this.trailPoints.length;
-
-            const color =
-                new THREE.Color();
-
-            color.setHSL(
-                t,
-                1.0,
-                0.4
-            );
-
-            colors.push(
-                color.r,
-                color.g,
-                color.b
-            );
-        }
-
-        this.trailGeometry.dispose();
-
-        this.trailGeometry =
-            new THREE.BufferGeometry();
-
-        this.trailGeometry.setAttribute(
-            'position',
-            new THREE.Float32BufferAttribute(
-                positions,
-                3
-            )
-        );
-
-        this.trailGeometry.setAttribute(
-            'color',
-            new THREE.Float32BufferAttribute(
-                colors,
-                3
-            )
-        );
-
-        this.trailLine.geometry =
-            this.trailGeometry;
+      colors.push(color.r, color.g, color.b);
     }
-    update(scene) {
 
-        createBallDebug(scene);
-    
-        this.syncMesh();
-    }
+    this.trailGeometry.dispose();
+
+    this.trailGeometry = new THREE.BufferGeometry();
+
+    this.trailGeometry.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(positions, 3),
+    );
+
+    this.trailGeometry.setAttribute(
+      "color",
+      new THREE.Float32BufferAttribute(colors, 3),
+    );
+
+    this.trailLine.geometry = this.trailGeometry;
+  }
+  update(scene) {
+    createBallDebug(scene);
+
+    this.syncMesh();
+  }
 }

@@ -27,6 +27,22 @@ export function createGUI(params, settings, onApplyAngle) {
   gui.add(params, 'scene_offset_y', -3, 3, 0.01).name('Scene Height');
   gui.add(params, 'vector_magnitude', 0.1, 1, 0.01).name('Vector Magnitude');
 
+
+   // =====================================================
+    // (radio buttons)
+    // =====================================================
+    const materialOptions = {
+        '(Metal)': 'metal',
+        '(Rubber)': 'rubber',
+        '(Wood)': 'wood'
+    };
+    gui.add(params, 'materialType', materialOptions).name('Material').onChange(value => {
+        if (params.onMaterialChange) {
+            params.onMaterialChange(value);
+        }
+    });
+
+
   const folder = gui.addFolder('Vectors');
 
   const allVectorsState = {
