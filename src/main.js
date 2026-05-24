@@ -68,15 +68,12 @@ const params = {
 
 
 
-// =====================================================
-// دالة تغيير المادة (سيتم استدعاؤها من الـ GUI)
-// =====================================================
+
 function handleMaterialChange(type) {
     ball.setMaterialType(type);
-    console.log(`تم تغيير المادة إلى: ${type}`);
+    console.log(`Done changing material to: ${type}`);
 }
 
-// ربط الدالة بالـ params حتى تتمكن الـ UI من استدعائها
 params.onMaterialChange = handleMaterialChange;
 
 
@@ -112,7 +109,6 @@ createHUD();
 
 
 
-// بدء الكرة بالمادة الافتراضية (معدن)
 ball.setMaterialType(params.materialType);
 
 // =========================

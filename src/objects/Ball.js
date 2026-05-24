@@ -55,12 +55,23 @@ export class Ball {
 
     // (Metal)
     const metalAlbedo = textureLoader.load(
-      "public/balls/blue_metal_plate_disp_4k.png",
+      "public/balls/Metal/blue_metal_plate_disp_4k.png",
     );
  
-
+    const metal_arm = textureLoader.load(
+      "public/balls/Metal/blue_metal_plate_arm_4k.jpg",
+    );
+  //  const metal_diff = textureLoader.load(
+  //    "public/balls/Metal/blue_metal_plate_diff_4k.jpg",
+  //  );
+ const metal_nor = textureLoader.load(
+   "public/balls/Metal/blue_metal_plate_nor_gl_4k.jpg",
+ );
     this.materials.metal = new THREE.MeshStandardMaterial({
       map: metalAlbedo,
+      // displacementMap: metal_diff,
+      aomap: metal_arm,
+      normalMap: metal_nor,
       roughness: 0.3,
       metalness: 0.95,
       color: 0xffffff,
@@ -68,24 +79,52 @@ export class Ball {
 
     // (Rubber)
     const rubberAlbedo = textureLoader.load(
-      "public/balls/baseball_playground_diff_2k.jpg",
+      "public/balls/Rubber/baseball_playground_diff_2k.jpg",
     );
+
+   const rubber_arm = textureLoader.load(
+     "public/balls/Rubber/baseball_playground_arm_2k.jpg",
+   );
    
+
+//  const rubberDisp = textureLoader.load(
+//    "public/balls/Rubber/baseball_playground_disp_2k.png",
+//  );
+ 
+  const rubberNor = textureLoader.load(
+    "public/balls/Rubber/baseball_playground_nor_gl_2k.jpg",
+  );
 
     this.materials.rubber = new THREE.MeshStandardMaterial({
       map: rubberAlbedo,
+      // displacementMap: rubberDisp,
+aomap: rubber_arm,
+      normalMap: rubberNor,
       roughness: 0.9,
       metalness: 0.05,
       color: 0xcccccc,
     });
 
     // (Wood)
-    const woodAlbedo = textureLoader.load(
-      "public/balls/rosewood_veneer1_diff_2k.jpg",
+    const wood_diff = textureLoader.load(
+      "public/balls/Wood/rosewood_veneer1_diff_2k.jpg",
     );
 
+    const wood_arm = textureLoader.load(
+      "public/balls/Wood/rosewood_veneer1_arm_2k.jpg",
+    );
+
+      // const wood_disp = textureLoader.load(
+      //   "public/balls/Wood/wood_cabinet_worn_long_disp_2k.png",
+      // );
+ const wood_nor = textureLoader.load(
+   "public/balls/Wood/wood_cabinet_worn_long_nor_dx_2k.jpg",
+ );
     this.materials.wood = new THREE.MeshStandardMaterial({
-      map: woodAlbedo,
+      map: wood_diff,
+      // displacementMap: wood_disp,
+      aomap: wood_arm,
+      normalMap: wood_nor,
       roughness: 0.7,
       metalness: 0.02,
       color: 0xffffff,
@@ -168,7 +207,6 @@ export class Ball {
   }
 
   setMaterialType(type) {
-    // تغيير المادة البصرية (التي أضفتها سابقاً)
     if (type === "metal" && this.materials.metal) {
       this.mesh.material = this.materials.metal;
       this.currentMaterialType = "metal";
