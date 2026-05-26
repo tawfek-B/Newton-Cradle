@@ -18,19 +18,25 @@ export const DEBUG = {
 };
 
 export const MATERIALS = {
-    STEEL: {
-        restitution: 0.98,
-        friction: 0.02
+    METAL: {
+        restitution: 0.85,
+        friction: 0.2,
+        density: 7800,
+        damping: 0.01
     },
 
     RUBBER: {
-        restitution: 0.8,
-        friction: 0.1
+        restitution: 0.92,
+        friction: 0.8,
+        density: 1100,
+        damping: 0.05
     },
 
     WOOD: {
-        restitution: 0.6,
-        friction: 0.3
+        restitution: 0.65,
+        friction: 0.5,
+        density: 700,
+        damping: 0.03
     }
 };
 

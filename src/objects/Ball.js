@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import { MATERIALS } from "../physics/Materials.js";
-import { DEBUG } from '../core/Constants.js';
+import { DEBUG, MATERIALS } from '../core/Constants.js';
 import { Rope } from './Rope.js';
 import { createBallDebug } from '../core/Debug.js';
+import { updateBallMass } from '../main.js';
 
 function isFiniteVec3(v) {
-    return Number.isFinite(v.x)
-        && Number.isFinite(v.y)
-        && Number.isFinite(v.z);
+  return Number.isFinite(v.x)
+    && Number.isFinite(v.y)
+    && Number.isFinite(v.z);
 }
 
 export class Ball {
@@ -17,9 +17,9 @@ export class Ball {
     this.prevTheta = this.theta;
 
     this.radius = 0.2;
-    this.mass = 1;
+    this.mass = 261.38;
 
-    this.restitution = 0.85; // Default restitution (bounciness)
+    this.restitution = 0.85;
     this.friction = 0.2;
     this.damping = 0.01;
 
@@ -50,28 +50,36 @@ export class Ball {
       wood: null,
     };
 
-    this.currentMaterialType = "metal"; // start with metal by default
+    this.currentMaterialType = "metal";
     const textureLoader = new THREE.TextureLoader();
 
     // (Metal)
     const metalAlbedo = textureLoader.load(
-      "public/balls/Metal/blue_metal_plate_disp_4k.png",
+      "/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_BaseColor.jpg",
     );
- 
-    const metal_arm = textureLoader.load(
-      "public/balls/Metal/blue_metal_plate_arm_4k.jpg",
+    const metalMetal = textureLoader.load(
+      "/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_Metallic.jpg",
+    )
+    // const metal_disp = textureLoader.load(
+    //   "/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_Displacement.png",
+    // );
+    const metal_nor = textureLoader.load(
+      "/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_Normal.png",
     );
-  //  const metal_diff = textureLoader.load(
-  //    "public/balls/Metal/blue_metal_plate_diff_4k.jpg",
-  //  );
- const metal_nor = textureLoader.load(
-   "public/balls/Metal/blue_metal_plate_nor_gl_4k.jpg",
- );
+    const metal_ao = textureLoader.load(
+      '/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_AmbientOcclusion.jpg',
+    );
+    const metal_rough = textureLoader.load(
+      "/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_Roughness.jpg",
+    );
     this.materials.metal = new THREE.MeshStandardMaterial({
       map: metalAlbedo,
-      // displacementMap: metal_diff,
-      aomap: metal_arm,
+      // displacementMap: metal_disp,
+      metalnessMap: metalMetal,
+      roughnessMap: metal_rough,
+      displacementScale: 100,
       normalMap: metal_nor,
+      aoMap: metal_ao,
       roughness: 0.3,
       metalness: 0.95,
       color: 0xffffff,
@@ -79,26 +87,26 @@ export class Ball {
 
     // (Rubber)
     const rubberAlbedo = textureLoader.load(
-      "public/balls/Rubber/baseball_playground_diff_2k.jpg",
+      "/balls/Rubber/baseball_playground_diff_2k.jpg",
     );
 
-   const rubber_arm = textureLoader.load(
-     "public/balls/Rubber/baseball_playground_arm_2k.jpg",
-   );
-   
+    const rubber_arm = textureLoader.load(
+      "/balls/Rubber/baseball_playground_arm_2k.jpg",
+    );
 
-//  const rubberDisp = textureLoader.load(
-//    "public/balls/Rubber/baseball_playground_disp_2k.png",
-//  );
- 
-  const rubberNor = textureLoader.load(
-    "public/balls/Rubber/baseball_playground_nor_gl_2k.jpg",
-  );
+    const rubberDisp = textureLoader.load(
+      "/balls/Rubber/baseball_playground_disp_2k.png",
+    );
+
+    const rubberNor = textureLoader.load(
+      "/balls/Rubber/baseball_playground_nor_gl_2k.jpg",
+    );
 
     this.materials.rubber = new THREE.MeshStandardMaterial({
       map: rubberAlbedo,
-      // displacementMap: rubberDisp,
-aomap: rubber_arm,
+      displacementMap: rubberDisp,
+      displacementScale: 0.01,
+      aoMap: rubber_arm,
       normalMap: rubberNor,
       roughness: 0.9,
       metalness: 0.05,
@@ -107,24 +115,25 @@ aomap: rubber_arm,
 
     // (Wood)
     const wood_diff = textureLoader.load(
-      "public/balls/Wood/rosewood_veneer1_diff_2k.jpg",
+      "/balls/Wood/rosewood_veneer1_diff_2k.jpg",
     );
 
     const wood_arm = textureLoader.load(
-      "public/balls/Wood/rosewood_veneer1_arm_2k.jpg",
+      "/balls/Wood/rosewood_veneer1_arm_2k.jpg",
     );
 
-      // const wood_disp = textureLoader.load(
-      //   "public/balls/Wood/wood_cabinet_worn_long_disp_2k.png",
-      // );
- const wood_nor = textureLoader.load(
-   "public/balls/Wood/wood_cabinet_worn_long_nor_dx_2k.jpg",
- );
+    const wood_disp = textureLoader.load(
+      "/balls/Wood/wood_cabinet_worn_long_disp_2k.png",
+    );
+    const wood_nor = textureLoader.load(
+      "/balls/Wood/wood_cabinet_worn_long_nor_dx_2k.jpg",
+    );
     this.materials.wood = new THREE.MeshStandardMaterial({
       map: wood_diff,
-      // displacementMap: wood_disp,
-      aomap: wood_arm,
+      aoMap: wood_arm,
       normalMap: wood_nor,
+      displacementMap: wood_disp,
+      displacementScale: 0.01,
       roughness: 0.7,
       metalness: 0.02,
       color: 0xffffff,
@@ -197,13 +206,19 @@ aomap: rubber_arm,
     this.trailLine = new THREE.Line(this.trailGeometry, this.trailMaterial);
   }
 
+  updateMass() {
+    const volume = (4 / 3) * Math.PI * Math.pow(this.radius, 3);
+    this.mass = MATERIALS[this.currentMaterialType.toUpperCase()].density * volume;
+
+    updateBallMass(this.mass);
+  }
+
   setPhysicalMaterial(physicalMat) {
     this.restitution = physicalMat.restitution;
     this.friction = physicalMat.friction;
     this.damping = physicalMat.damping;
-    // if you want to link density to mass (assuming constant volume)
-    const volume = (4/3) * Math.PI * Math.pow(this.radius, 3);
-    this.mass = physicalMat.density * volume;
+
+    this.updateMass();
   }
 
   setMaterialType(type) {

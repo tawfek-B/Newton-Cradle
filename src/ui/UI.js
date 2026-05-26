@@ -18,7 +18,7 @@ export function createGUI(params, settings, onApplyAngle) {
   gui.add(params, 'angle', -150, 150);
   gui.add({ apply: onApplyAngle }, 'apply').name('Apply Angle');
 
-  gui.add(params, 'mass', 0.1, 5);
+  gui.add(params, 'mass', 1, 350, 1);
   gui.add(params, 'length', 0.5, 2);
   gui.add(params, 'damping', -1, 1);
   gui.add(params, 'gravity', -PHYSICS.GRAVITY * 2, PHYSICS.GRAVITY * 2);
@@ -27,14 +27,10 @@ export function createGUI(params, settings, onApplyAngle) {
   gui.add(params, 'scene_offset_y', -3, 3, 0.01).name('Scene Height');
   gui.add(params, 'vector_magnitude', 0.1, 1, 0.01).name('Vector Magnitude');
 
-
-   // =====================================================
-    // (radio buttons)
-    // =====================================================
-    const materialOptions = {
-        '(Metal)': 'metal',
-        '(Rubber)': 'rubber',
-        '(Wood)': 'wood'
+const materialOptions = {
+        'Metal': 'metal',
+        'Rubber': 'rubber',
+        'Wood': 'wood'
     };
     gui.add(params, 'materialType', materialOptions).name('Material').onChange(value => {
         if (params.onMaterialChange) {

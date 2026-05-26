@@ -186,7 +186,7 @@ export function updateVectors(ball, mag, gravity = PHYSICS.GRAVITY) {
 
   ball.weightLine.geometry.setFromPoints([
     ball.pos,
-    ball.pos.clone().add(new THREE.Vector3(0, -gravity * ball.mass, 0).multiplyScalar(s))
+    ball.pos.clone().add(new THREE.Vector3(0, -gravity * ball.mass, 0).multiplyScalar(s/75))
   ]);
 
   const tan = ball.acc_tangential || new THREE.Vector3();
@@ -197,8 +197,8 @@ export function updateVectors(ball, mag, gravity = PHYSICS.GRAVITY) {
 
   const tA = ball.tensionA || new THREE.Vector3();
   const tB = ball.tensionB || new THREE.Vector3();
-  ball.tensionLineA.geometry.setFromPoints([ball.pos, ball.pos.clone().add(tA.clone().multiplyScalar(s))]);
-  ball.tensionLineB.geometry.setFromPoints([ball.pos, ball.pos.clone().add(tB.clone().multiplyScalar(s))]);
+  ball.tensionLineA.geometry.setFromPoints([ball.pos, ball.pos.clone().add(tA.clone().multiplyScalar(s/75))]);
+  ball.tensionLineB.geometry.setFromPoints([ball.pos, ball.pos.clone().add(tB.clone().multiplyScalar(s/75))]);
 
   const c = ball.acc_centripetal || new THREE.Vector3();
   ball.cenLine.geometry.setFromPoints([
@@ -224,10 +224,10 @@ export function updateVectors(ball, mag, gravity = PHYSICS.GRAVITY) {
 
   ball.velLabel.position.copy(ball.pos).add(ball.vel.clone().multiplyScalar(s));
   ball.accLabel.position.copy(ball.pos).add(ball.acc.clone().multiplyScalar(s));
-  ball.weightLabel.position.copy(ball.pos).add(new THREE.Vector3(0, -gravity * ball.mass * s, 0));
+  ball.weightLabel.position.copy(ball.pos).add(new THREE.Vector3(0, -gravity * ball.mass * (s/75), 0));
   ball.tanLabel.position.copy(ball.pos).add(tan.clone().multiplyScalar(s));
-  ball.tensionALabel.position.copy(ball.pos).add(tA.clone().multiplyScalar(s));
-  ball.tensionBLabel.position.copy(ball.pos).add(tB.clone().multiplyScalar(s));
+  ball.tensionALabel.position.copy(ball.pos).add(tA.clone().multiplyScalar(s/75));
+  ball.tensionBLabel.position.copy(ball.pos).add(tB.clone().multiplyScalar(s/75));
   ball.cenLabel.position.copy(ball.pos).add(c.clone().multiplyScalar(s));
   ball.angVelLabel.position.copy(ball.pos).add(w.clone().multiplyScalar(s));
   ball.angAccLabel.position.copy(ball.pos).add(a.clone().multiplyScalar(s));

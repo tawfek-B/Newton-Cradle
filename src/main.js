@@ -55,7 +55,7 @@ const settings = {
 };
 
 const params = {
-  mass: 1,
+  mass: 261.38,
   damping: 0,
   length: 1,
   gravity: PHYSICS.GRAVITY,
@@ -66,20 +66,20 @@ const params = {
   materialType: 'metal'
 };
 
-
-
+export function updateBallMass(newMass) {
+  params.mass = newMass;
+}
 
 function handleMaterialChange(type) {
-    ball.setMaterialType(type);
-    console.log(`Done changing material to: ${type}`);
+  ball.setMaterialType(type);
+  console.log(`Done changing material to: ${type}. New properties - Restitution: ${ball.restitution}, Friction: ${ball.friction}, Damping: ${ball.damping}, Mass: ${ball.mass.toFixed(2)}`);
+
+  if (massController) {
+    massController.updateDisplay();
+  }
 }
 
 params.onMaterialChange = handleMaterialChange;
-
-
-
-
-
 
 // =========================
 // RESET ANGLE
@@ -104,10 +104,15 @@ function setAngle() {
 // =========================
 // UI
 // =========================
-createGUI(params, settings, setAngle);
+const gui = createGUI(params, settings, setAngle);
 createHUD();
 
-
+let massController = null;
+gui.controllers.forEach(controller => {
+  if (controller._name === 'mass') {
+    massController = controller;
+  }
+});
 
 ball.setMaterialType(params.materialType);
 
@@ -127,7 +132,6 @@ function animate() {
   // =========================
   // PARAMETERS
   // =========================
-  ball.mass = params.mass;
   ball.length = params.length;
 
   g = params.gravity;
@@ -147,6 +151,8 @@ function animate() {
   if (!ball.ropeA || !ball.ropeB) {
     enforceRopeConstraint(ball);
   }
+
+  ball.mass = params.mass;
 
   // =========================
   // RENDER UPDATES
