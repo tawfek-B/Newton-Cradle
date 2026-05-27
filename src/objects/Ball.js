@@ -155,7 +155,7 @@ export class Ball {
     // ROPE SETTINGS
     // =====================================================
 
-    this.ropeSegments = 8;
+    this.ropeSegments = 15; // Report says 15-30 segments per rope
 
     this.ropeNodeMass = 0.01;
 
