@@ -1,5 +1,3 @@
-// Handles motion trail generation, updates, fading,
-// and rendering behind moving objects.
 export function updateTrail(ball) {
     ball.trailPoints.push(ball.pos.clone());
   

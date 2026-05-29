@@ -21,7 +21,6 @@ export function createTable() {
         normalScale: new THREE.Vector2(0.3, 0.3),
     });
 
-    // TABLE TOP
     const top = new THREE.Mesh(
         new THREE.BoxGeometry(12, 0.2, 8),
         material
@@ -31,10 +30,7 @@ export function createTable() {
     top.receiveShadow = true;
     top.castShadow = true;
 
-    // =========================
-    // LEGS
-    // =========================
-    const legMaterial = material; // reuse same look
+    const legMaterial = material;
 
     const legGeo = new THREE.BoxGeometry(0.3, 20, 0.3);
 
@@ -42,7 +38,7 @@ export function createTable() {
 
     const xOffset = 5.5;
     const zOffset = 3.5;
-    const yOffset = -11; // below tabletop
+    const yOffset = -11;
 
     const positions = [
         [ xOffset, yOffset,  zOffset],
@@ -59,7 +55,6 @@ export function createTable() {
         legs.push(leg);
     }
 
-    // GROUP EVERYTHING
     const table = new THREE.Group();
     table.add(top);
     legs.forEach(l => table.add(l));

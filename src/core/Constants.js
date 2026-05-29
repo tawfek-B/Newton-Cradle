@@ -21,21 +21,17 @@ export const DEBUG = {
 
 export const MATERIALS = {
     METAL: {
-        // Steel is near-ideal: e ≈ 0.95–0.98 for real steel balls
         restitution: 0.96,
         friction: 0.15,
         density: 7800,
         damping: 0.01
     },
-
     RUBBER: {
-        // Rubber is much LESS elastic than steel
         restitution: 0.45,
         friction: 0.8,
         density: 1200,
         damping: 0.08
     },
-
     WOOD: {
         restitution: 0.60,
         friction: 0.5,
@@ -56,18 +52,6 @@ export const COLLISION = {
     SEPARATION_EPSILON: 1e-6,
     MIN_IMPULSE_FOR_SOUND: 0.05,
 
-    // =====================================================
-    // CASCADE ITERATIONS
-    // =====================================================
-    // Number of collision resolution passes per substep.
-    // Each pass can propagate momentum one ball further
-    // through the chain. For a 5-ball Newton's Cradle,
-    // 4+ passes ensures the full cascade (ball5→ball4→
-    // ball3→ball2→ball1) completes within one substep.
-    //
-    // Higher values = more stable but more CPU.
-    // 8 is generous; 4-5 would suffice for 5 balls.
-    // =====================================================
     CASCADE_ITERATIONS: 8
 };
 

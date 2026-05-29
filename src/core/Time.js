@@ -1,5 +1,3 @@
-// Manages simulation timing, delta time, fixed timesteps, pause/resume,
-// slow motion, and framerate-independent physics updates.
 export class Time {
     constructor() {
       this.last = performance.now();

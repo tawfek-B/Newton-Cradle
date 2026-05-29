@@ -136,3 +136,10 @@ dist
 .pnp.*
 
 /*.zip
+
+# Project documentation (not code)
+التقرير_الفيزيائي_لمشروع_الحسابات_العلمية.docx
+CHANGES.md
+momentum_transfer.md
+*.docx
+*.mp3

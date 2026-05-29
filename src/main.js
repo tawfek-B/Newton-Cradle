@@ -4,11 +4,10 @@ import { CradleSystem } from './objects/CradleSystem.js';
 import { Time } from './core/Time.js';
 import { CRADLE, PHYSICS } from './core/Constants.js';
 
-// import { createBallDebug } from './core/Debug.js';
-
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
 import { scene, camera, renderer } from './world/World.js';
 
+import { SoundManager } from './audio/SoundManager.js';
 import { createGUI } from './ui/UI.js';
 import { createHUD } from './world/HUD.js';
 import {
@@ -20,10 +19,6 @@ import {
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-
-// =========================
-// CRADLE SYSTEM
-// =========================
 
 const NUM_BALLS = CRADLE.NUM_BALLS;
 const SPACING = CRADLE.BALL_SPACING;
@@ -37,7 +32,6 @@ for (let i = 0; i < NUM_BALLS; i++) {
   balls.push(ball);
 }
 
-// Vector rendering for the center ball only (cleaner display)
 const displayBall = balls[Math.floor(NUM_BALLS / 2)];
 initVectorRendering(displayBall);
 addVectorsToScene(scene, displayBall);
@@ -46,21 +40,9 @@ const cradle = new CradleSystem(balls);
 
 let g = PHYSICS.GRAVITY;
 
-// =========================
-// TIME SYSTEM
-// =========================
-
 const time = new Time();
 
-// =========================
-// TRACKED PARAMS (to avoid unnecessary rope resets)
-// =========================
-
 let _prevLength = null;
-
-// =========================
-// SETTINGS
-// =========================
 
 const settings = {
   velocity: true,
@@ -86,14 +68,8 @@ const params = {
   materialType: 'metal'
 };
 
-// =========================
-// MATERIAL CHANGE HANDLER
-// =========================
-
 function handleMaterialChange(type) {
   cradle.setMaterialType(type);
-
-  // Display the first ball's properties
   const firstBall = balls[0];
   console.log(`All balls changed to: ${type}. ` +
     `Restitution: ${firstBall.restitution}, ` +
@@ -113,17 +89,9 @@ export function updateBallMass(newMass) {
 
 params.onMaterialChange = handleMaterialChange;
 
-// =========================
-// RESET ANGLE (via CradleSystem)
-// =========================
-
 function setAngle() {
   cradle.resetToAngle(params.angle);
 }
-
-// =========================
-// UI
-// =========================
 
 const gui = createGUI(params, settings, setAngle);
 createHUD();
@@ -135,26 +103,18 @@ gui.controllers.forEach(controller => {
   }
 });
 
-// Set initial material
 cradle.setMaterialType(params.materialType);
 
-// =========================
-// LOOP
-// =========================
+// Preload collision audio buffers
+SoundManager.getInstance().loadBuffers();
 
 function animate() {
   requestAnimationFrame(animate);
 
-  // =========================
-  // PARAMETER SYNC
-  // =========================
-
-  // Sync ball.length property every frame (lightweight)
   for (const ball of balls) {
     ball.length = params.length;
   }
 
-  // Only reset ropes when length actually changes (expensive)
   if (_prevLength === null || Math.abs(_prevLength - params.length) > 1e-6) {
     cradle.setLength(params.length);
     _prevLength = params.length;
@@ -165,31 +125,15 @@ function animate() {
   g = params.gravity;
   scene.position.y = params.scene_offset_y;
 
-  // =========================
-  // VISIBILITY TOGGLES
-  // =========================
-
   setVectorVisibility(displayBall, settings);
 
   for (const ball of balls) {
     ball.trailLine.visible = settings.trail;
   }
 
-  // =========================
-  // TIME STEP
-  // =========================
-
   const dt = time.update(params.time_pace);
 
-  // =========================
-  // PHYSICS PIPELINE
-  // =========================
-
   cradle.update(dt, params.damping, params.gravity);
-
-  // =========================
-  // RENDER UPDATES
-  // =========================
 
   for (const ball of balls) {
     ball.syncMesh();
@@ -200,10 +144,6 @@ function animate() {
   controls.update();
   renderer.render(scene, camera);
 }
-
-// =========================
-// START
-// =========================
 
 setAngle();
 animate();
