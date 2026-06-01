@@ -3,7 +3,9 @@ export const PHYSICS = {
     AIR_DAMPING: 0.05,
     FIXED_DT: 1 / 120,
     MAX_DT: 0.016,
-    CONSTRAINT_ITERATIONS: 5
+    CONSTRAINT_ITERATIONS: 5,
+    AIR_DRAG_LINEAR: 0.02,
+    AIR_DRAG_QUADRATIC: 0.005
 };
 
 export const PENDULUM = {
@@ -19,24 +21,22 @@ export const DEBUG = {
 
 export const MATERIALS = {
     METAL: {
-        restitution: 0.85,
-        friction: 0.2,
+        restitution: 0.96,
+        friction: 0.15,
         density: 7800,
         damping: 0.01
     },
-
     RUBBER: {
-        restitution: 0.92,
+        restitution: 0.88,
         friction: 0.8,
-        density: 1100,
-        damping: 0.05
+        density: 1200,
+        damping: 0.08
     },
-
     WOOD: {
-        restitution: 0.65,
+        restitution: 0.90,
         friction: 0.5,
         density: 700,
-        damping: 0.03
+        damping: 0.04
     }
 };
 
@@ -44,6 +44,21 @@ export const ENERGY = {
     HEAT_LOSS: 0.01,
     SOUND_LOSS: 0.02,
     INTERNAL_FRICTION: 0.03
+};
+
+export const COLLISION = {
+    HERTZ_STIFFNESS: 30000,
+    HERTZ_DAMPING: 3,
+    SEPARATION_EPSILON: 1e-6,
+    MIN_IMPULSE_FOR_SOUND: 0.05,
+
+    CASCADE_ITERATIONS: 8
+};
+
+export const CRADLE = {
+    NUM_BALLS: 5,
+    BALL_SPACING: 0.4,
+    START_ANGLE_DEG: 20
 };
 
 export const SIMULATION = {

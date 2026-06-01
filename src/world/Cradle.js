@@ -3,7 +3,6 @@ import * as THREE from 'three';
 export function createCradleArm() {
     const path = new THREE.CurvePath();
   
-    // LEFT VERTICAL
     path.add(
       new THREE.LineCurve3(
         new THREE.Vector3(-2, -1, 0),
@@ -11,7 +10,6 @@ export function createCradleArm() {
       )
     );
   
-    // TOP-LEFT CURVE
     path.add(
       new THREE.QuadraticBezierCurve3(
         new THREE.Vector3(-2, 1.6, 0),
@@ -20,7 +18,6 @@ export function createCradleArm() {
       )
     );
   
-    // TOP HORIZONTAL
     path.add(
       new THREE.LineCurve3(
         new THREE.Vector3(-1.6, 2, 0),
@@ -28,7 +25,6 @@ export function createCradleArm() {
       )
     );
   
-    // TOP-RIGHT CURVE
     path.add(
       new THREE.QuadraticBezierCurve3(
         new THREE.Vector3(1.6, 2, 0),
@@ -37,7 +33,6 @@ export function createCradleArm() {
       )
     );
   
-    // RIGHT VERTICAL
     path.add(
       new THREE.LineCurve3(
         new THREE.Vector3(2, 1.6, 0),

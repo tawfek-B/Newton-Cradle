@@ -21,212 +21,97 @@ import {
 } from './Integrator.js';
 
 function isFiniteVec3(v) {
-
     return Number.isFinite(v.x)
         && Number.isFinite(v.y)
         && Number.isFinite(v.z);
 }
 
-export function updatePendulum(
-    ball,
-    dt,
-    damping = 0,
-    g1 = PHYSICS.GRAVITY
-) {
+function resetBallToSafeState(ball) {
+    ball.pos.set(
+        ball.pivot.x +
+        Math.sin(ball.theta) * ball.length,
+        ball.pivot.y -
+        Math.cos(ball.theta) * ball.length,
+        0
+    );
+    ball.vel.set(0, 0, 0);
+    if (ball.resetRopes) {
+        ball.resetRopes();
+    }
+}
 
-    const g = g1;
+export function stepPendulumSubstep(ball, h, damping, gravityVec) {
+    const totalForce =
+        gravityVec.clone()
+            .multiplyScalar(ball.mass);
 
-    const gravity =
-        new THREE.Vector3(
-            0,
-            -g,
-            0
+    if (ball.ropeA && ball.ropeB) {
+        const ropeForce =
+            applyElasticRopeForces(ball, h, gravityVec);
+        totalForce.add(ropeForce);
+    }
+
+    const accel =
+        totalForce.multiplyScalar(
+            1 / Math.max(ball.mass, 1e-6)
         );
 
-    // =====================================================
-    // FULL SYSTEM SUBSTEPS
-    // =====================================================
+    integrateSemiImplicitEuler(ball, accel, h);
+    applyDamping(ball, h, damping);
 
-    const stableH =
-        1 / 2000;
+    const r = ball.pos.clone().sub(ball.pivot);
+    const dist = r.length();
 
-    const substeps =
-        Math.max(
-            1,
-            Math.ceil(dt / stableH)
-        );
+    if (dist > ball.length) {
+        const rHat = r.clone().normalize();
+        const stretch = dist - ball.length;
+        const alpha = 0.5;
+        ball.pos.sub(rHat.clone().multiplyScalar(stretch * alpha));
 
-    const h =
-        dt / substeps;
-
-    for (let s = 0; s < substeps; s++) {
-
-        // =================================================
-        // 1. TOTAL FORCE
-        // =================================================
-
-        const totalForce =
-            gravity.clone()
-                .multiplyScalar(ball.mass);
-
-        if (ball.ropeA && ball.ropeB) {
-
-            const ropeForce =
-                applyElasticRopeForces(
-                    ball,
-                    h,
-                    gravity
-                );
-
-            totalForce.add(
-                ropeForce
-            );
-        }
-
-        // =================================================
-        // 2. ACCELERATION
-        // =================================================
-
-        const accel =
-            totalForce.multiplyScalar(
-                1 / Math.max(ball.mass, 1e-6)
-            );
-
-        // =================================================
-        // 3. INTEGRATION
-        // =================================================
-
-        integrateSemiImplicitEuler(
-            ball,
-            accel,
-            h
-        );
-
-        // =================================================
-        // 4. GLOBAL DAMPING
-        // =================================================
-
-        applyDamping(
-            ball,
-            h,
-            damping
-        );
-
-        // =================================================
-        // 5. POSITION CORRECTION
-        // =================================================
-
-        const r =
-            ball.pos.clone()
-                .sub(ball.pivot);
-
-        const dist =
-            r.length();
-
-        if (dist > ball.length) {
-
-            const rHat =
-                r.clone()
-                    .normalize();
-
-            const stretch =
-                dist - ball.length;
-
-            const alpha = 0.5;
-
-            ball.pos.sub(
-                rHat.clone()
-                    .multiplyScalar(
-                        stretch * alpha
-                    )
-            );
-
-            // =============================================
-            // RADIAL VELOCITY CORRECTION
-            // =============================================
-
-            const radialSpeed =
-                ball.vel.dot(rHat);
-
-            if (radialSpeed > 0) {
-
-                ball.vel.sub(
-                    rHat.clone()
-                        .multiplyScalar(
-                            radialSpeed * 0.2
-                        )
-                );
-            }
-        }
-
-        // =================================================
-        // 6. SAFETY
-        // =================================================
-
-        if (
-            !isFiniteVec3(ball.pos)
-            || !isFiniteVec3(ball.vel)
-        ) {
-
-            ball.pos.set(
-                ball.pivot.x +
-                Math.sin(ball.theta) * ball.length,
-
-                ball.pivot.y -
-                Math.cos(ball.theta) * ball.length,
-
-                0
-            );
-
-            ball.vel.set(
-                0,
-                0,
-                0
-            );
-
-            if (ball.resetRopes) {
-                ball.resetRopes();
-            }
-
-            break;
+        const radialSpeed = ball.vel.dot(rHat);
+        if (radialSpeed > 0) {
+            ball.vel.sub(rHat.clone().multiplyScalar(radialSpeed * 0.2));
         }
     }
 
-    // =====================================================
-    // ANALYTICS
-    // =====================================================
+    if (!isFiniteVec3(ball.pos) || !isFiniteVec3(ball.vel)) {
+        resetBallToSafeState(ball);
+        return false;
+    }
 
+    return true;
+}
+
+export function updatePendulum(ball, dt, damping = 0, g1 = PHYSICS.GRAVITY) {
+    const g = g1;
+    const gravity = new THREE.Vector3(0, -g, 0);
+    const stableH = 1 / 2000;
+    const substeps = Math.max(1, Math.ceil(dt / stableH));
+    const h = dt / substeps;
+
+    for (let s = 0; s < substeps; s++) {
+        const ok = stepPendulumSubstep(ball, h, damping, gravity);
+        if (!ok) break;
+    }
+
+    computePendulumAnalytics(ball, gravity, g);
+}
+
+export function computePendulumAnalytics(ball, gravityVec, g) {
     const {
         r: newR,
         rHat,
         isTaut
     } = getRopeGeometry(ball);
 
-    const {
-        a_c_mag
-    } =
-        updateAngularAndAcceleration(
-            ball,
-            newR,
-            rHat,
-            gravity,
-            g
-        );
+    let a_c_mag = 0;
+    const analytics =
+        updateAngularAndAcceleration(ball, newR, rHat, gravityVec, g);
 
-    updateTension(
-        ball,
-        rHat,
-        a_c_mag,
-        g,
-        isTaut
-    );
+    if (analytics) {
+        a_c_mag = analytics.a_c_mag;
+    }
 
-    // =====================================================
-    // ENERGY
-    // =====================================================
-
-    updateEnergyState(
-        ball,
-        g
-    );
+    updateTension(ball, rHat, a_c_mag, g, isTaut);
+    updateEnergyState(ball, g);
 }

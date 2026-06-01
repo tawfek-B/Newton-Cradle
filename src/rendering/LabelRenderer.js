@@ -1,5 +1,3 @@
-// Manages all text labels, text sprites, positioning,
-// scaling, and dynamic label updates.
 export function updateLabel(labelData, value) {
     const { canvas, ctx, texture } = labelData;
   

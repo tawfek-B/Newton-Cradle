@@ -1,16 +1,13 @@
 import * as THREE from 'three';
 import { Ball } from './objects/Ball.js';
-import { updatePendulum } from './physics/Pendulum.js';
-import { applyDamping } from './physics/Damping.js';
-import { enforceRopeConstraint } from './physics/Constraints.js';
+import { CradleSystem } from './objects/CradleSystem.js';
 import { Time } from './core/Time.js';
-
-// import { createBallDebug } from './core/Debug.js';
+import { CRADLE, PHYSICS } from './core/Constants.js';
 
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
 import { scene, camera, renderer } from './world/World.js';
-import { PHYSICS } from './core/Constants.js';
 
+import { SoundManager } from './audio/SoundManager.js';
 import { createGUI } from './ui/UI.js';
 import { createHUD } from './world/HUD.js';
 import {
@@ -23,25 +20,31 @@ import {
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-// =========================
-// SINGLE BALL (like before)
-// =========================
-const ball = new Ball(0);
-ball.addToScene(scene);
-// ball.debug = createBallDebug(scene)
-initVectorRendering(ball);
-addVectorsToScene(scene, ball);
+const NUM_BALLS = CRADLE.NUM_BALLS;
+const SPACING = CRADLE.BALL_SPACING;
+
+const balls = [];
+
+for (let i = 0; i < NUM_BALLS; i++) {
+  const x = (i - (NUM_BALLS - 1) / 2) * SPACING;
+  const ball = new Ball(x);
+  ball.addToScene(scene);
+  balls.push(ball);
+}
+
+balls.forEach(ball => {
+  initVectorRendering(ball);
+  addVectorsToScene(scene, ball);
+});
+
+const cradle = new CradleSystem(balls);
 
 let g = PHYSICS.GRAVITY;
 
-// =========================
-// TIME SYSTEM
-// =========================
 const time = new Time();
 
-// =========================
-// SETTINGS
-// =========================
+let _prevLength = null;
+
 const settings = {
   velocity: true,
   acceleration: true,
@@ -66,44 +69,31 @@ const params = {
   materialType: 'metal'
 };
 
-export function updateBallMass(newMass) {
-  params.mass = newMass;
-}
-
 function handleMaterialChange(type) {
-  ball.setMaterialType(type);
-  console.log(`Done changing material to: ${type}. New properties - Restitution: ${ball.restitution}, Friction: ${ball.friction}, Damping: ${ball.damping}, Mass: ${ball.mass.toFixed(2)}`);
+  cradle.setMaterialType(type);
+  const firstBall = balls[0];
+  console.log(`All balls changed to: ${type}. ` +
+    `Restitution: ${firstBall.restitution}, ` +
+    `Friction: ${firstBall.friction}, ` +
+    `Damping: ${firstBall.damping}, ` +
+    `Mass per ball: ${firstBall.mass.toFixed(2)}`
+  );
 
   if (massController) {
     massController.updateDisplay();
   }
 }
 
-params.onMaterialChange = handleMaterialChange;
-
-// =========================
-// RESET ANGLE
-// =========================
-function setAngle() {
-  const angle = THREE.MathUtils.degToRad(params.angle);
-
-  ball.theta = angle;
-  ball.prevTheta = angle;
-  ball.omega = 0;
-
-  ball.pos.set(
-    ball.pivot.x + Math.sin(ball.theta) * ball.length,
-    ball.pivot.y - Math.cos(ball.theta) * ball.length,
-    0
-  );
-
-  ball.vel.set(0, 0, 0);
-  ball.resetRopes();
+export function updateBallMass(newMass) {
+  params.mass = newMass;
 }
 
-// =========================
-// UI
-// =========================
+params.onMaterialChange = handleMaterialChange;
+
+function setAngle() {
+  cradle.resetToAngle(params.angle);
+}
+
 const gui = createGUI(params, settings, setAngle);
 createHUD();
 
@@ -114,51 +104,61 @@ gui.controllers.forEach(controller => {
   }
 });
 
-ball.setMaterialType(params.materialType);
+cradle.setMaterialType(params.materialType);
 
-// =========================
-// LOOP
-// =========================
+function initAudio() {
+  SoundManager.getInstance().initialize();
+
+  window.removeEventListener('click', initAudio);
+  window.removeEventListener('keydown', initAudio);
+  window.removeEventListener('touchstart', initAudio);
+}
+
+window.addEventListener(
+  'pointerdown',
+  async () => {
+    await SoundManager.getInstance().initialize();
+  },
+  { once: true }
+);
+window.addEventListener('click', initAudio);
+window.addEventListener('keydown', initAudio);
+window.addEventListener('touchstart', initAudio);
+
 function animate() {
   requestAnimationFrame(animate);
 
-  // =========================
-  // VISIBILITY TOGGLES
-  // =========================
-  setVectorVisibility(ball, settings);
-
-  ball.trailLine.visible = settings.trail;
-
-  // =========================
-  // PARAMETERS
-  // =========================
-  ball.length = params.length;
-
-  g = params.gravity;
-
-  scene.position.y = params.scene_offset_y;
-
-  // =========================
-  // TIME STEP
-  // =========================
-  const dt = time.update(params.time_pace);
-
-  // =========================
-  // PHYSICS PIPELINE
-  // =========================
-  updatePendulum(ball, dt, params.damping, params.gravity);
-  applyDamping(ball, dt, params.damping);
-  if (!ball.ropeA || !ball.ropeB) {
-    enforceRopeConstraint(ball);
+  for (const ball of balls) {
+    ball.length = params.length;
   }
 
-  ball.mass = params.mass;
+  if (_prevLength === null || Math.abs(_prevLength - params.length) > 1e-6) {
+    cradle.setLength(params.length);
+    _prevLength = params.length;
+  }
 
-  // =========================
-  // RENDER UPDATES
-  // =========================
-  ball.syncMesh();
-  updateVectors(ball, params.vector_magnitude, params.gravity);
+  cradle.updateMasses(params.mass);
+
+  g = params.gravity;
+  scene.position.y = params.scene_offset_y;
+
+
+  for (const ball of balls) {
+    ball.trailLine.visible = settings.trail;
+  }
+
+  const dt = time.update(params.time_pace) * 2.25;
+
+  cradle.update(dt, params.damping, params.gravity);
+
+  for (const ball of balls) {
+    ball.syncMesh();
+  }
+
+  balls.forEach(ball => {
+    updateVectors(ball, params.vector_magnitude, params.gravity);
+    setVectorVisibility(ball, settings);
+  });
 
   controls.update();
   renderer.render(scene, camera);
