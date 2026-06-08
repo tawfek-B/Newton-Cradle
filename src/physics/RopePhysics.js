@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { clamp } from '../utils/MathUtils.js';
 
 function isFiniteVec3(v) {
     return Number.isFinite(v.x)
@@ -41,8 +42,8 @@ function stepSingleRope(rope, dt, gravity, outForce) {
         const nPrev = dPrev.clone().divideScalar(lenPrev);
         const nNext = dNext.clone().divideScalar(lenNext);
 
-        let extPrev = THREE.MathUtils.clamp(Math.max(0, lenPrev - segRest), 0, maxExt);
-        let extNext = THREE.MathUtils.clamp(Math.max(0, lenNext - segRest), 0, maxExt);
+        let extPrev = clamp(Math.max(0, lenPrev - segRest), 0, maxExt);
+        let extNext = clamp(Math.max(0, lenNext - segRest), 0, maxExt);
 
         if (extPrev < extEps) extPrev = 0;
         if (extNext < extEps) extNext = 0;
@@ -85,7 +86,7 @@ function stepSingleRope(rope, dt, gravity, outForce) {
     const lenTail = Math.max(dTail.length(), 1e-6);
     const nTail = dTail.clone().divideScalar(lenTail);
 
-    let extTail = THREE.MathUtils.clamp(Math.max(0, lenTail - segRest), 0, maxExt);
+    let extTail = clamp(Math.max(0, lenTail - segRest), 0, maxExt);
     if (extTail < extEps) extTail = 0;
 
     const relTail = ball.vel.clone().sub(tailVel).dot(nTail);

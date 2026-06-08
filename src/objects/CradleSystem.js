@@ -18,6 +18,9 @@ import {
 
 import { PHYSICS, COLLISION } from '../core/Constants.js';
 
+import { degToRad } from '../utils/MathUtils.js';
+import { project } from '../utils/VectorUtils.js';
+
 const STABLE_H = 1 / 2000;
 
 export class CradleSystem {
@@ -49,11 +52,8 @@ export class CradleSystem {
         const radialX = Math.sin(theta);
         const radialY = -Math.cos(theta);
 
-        const radialSpeed =
-            ball.vel.x * radialX + ball.vel.y * radialY;
-
-        ball.vel.x -= radialSpeed * radialX;
-        ball.vel.y -= radialSpeed * radialY;
+        const radialVel = project(ball.vel, new THREE.Vector3(radialX, radialY, 0));
+        ball.vel.sub(radialVel);
 
         const tangentDirX = Math.cos(theta);
         const tangentDirY = Math.sin(theta);
@@ -98,7 +98,10 @@ export class CradleSystem {
 
         const gravityVec = new THREE.Vector3(0, -gravity, 0);
 
-        const effectiveDamping = PHYSICS.AIR_DAMPING + globalDamping;
+        // Apply air damping only when user sets global damping > 0
+        const effectiveDamping = globalDamping > 0
+            ? PHYSICS.AIR_DAMPING + globalDamping
+            : 0;
 
         const currentCollisionPairs = new Set();
 
@@ -217,9 +220,7 @@ export class CradleSystem {
     resetToAngle(angleDeg) {
         if (!this.balls || this.balls.length === 0) return;
 
-        const angleRad = THREE.MathUtils
-            ? THREE.MathUtils.degToRad(angleDeg)
-            : angleDeg * Math.PI / 180;
+        const angleRad = degToRad(angleDeg);
 
         for (let i = 0; i < this.balls.length; i++) {
             const ball = this.balls[i];
@@ -265,6 +266,12 @@ export class CradleSystem {
     updateMasses(mass) {
         for (const ball of this.balls) {
             ball.mass = mass;
+        }
+    }
+
+    setElasticity(e) {
+        for (const ball of this.balls) {
+            ball.restitution = e;
         }
     }
 

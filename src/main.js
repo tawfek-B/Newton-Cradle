@@ -66,12 +66,21 @@ const params = {
   time_pace: 1,
   scene_offset_y: 0,
   vector_magnitude: 0.1,
-  materialType: 'metal'
+  materialType: 'metal',
+  elasticity: 0.96,
+  ropeDamping: 10
 };
 
 function handleMaterialChange(type) {
   cradle.setMaterialType(type);
   const firstBall = balls[0];
+  
+  // Sync elasticity slider with material's natural restitution
+  params.elasticity = firstBall.restitution;
+  if (elasticityController) {
+    elasticityController.updateDisplay();
+  }
+  
   console.log(`All balls changed to: ${type}. ` +
     `Restitution: ${firstBall.restitution}, ` +
     `Friction: ${firstBall.friction}, ` +
@@ -98,13 +107,21 @@ const gui = createGUI(params, settings, setAngle);
 createHUD();
 
 let massController = null;
+let elasticityController = null;
 gui.controllers.forEach(controller => {
   if (controller._name === 'mass') {
     massController = controller;
   }
+  if (controller._name === 'elasticity') {
+    elasticityController = controller;
+  }
 });
 
+// Apply initial elasticity override
 cradle.setMaterialType(params.materialType);
+
+// Apply initial elasticity
+cradle.setElasticity(params.elasticity);
 
 function initAudio() {
   SoundManager.getInstance().initialize();
@@ -138,6 +155,12 @@ function animate() {
   }
 
   cradle.updateMasses(params.mass);
+  cradle.setElasticity(params.elasticity);
+
+  for (const ball of balls) {
+    if (ball.ropeA) ball.ropeA.damping = params.ropeDamping;
+    if (ball.ropeB) ball.ropeB.damping = params.ropeDamping;
+  }
 
   g = params.gravity;
   scene.position.y = params.scene_offset_y;

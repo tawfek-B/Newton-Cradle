@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { COLLISION } from '../core/Constants.js';
+import { impulse } from '../utils/PhysicsUtils.js';
 
 export function detectCollision(ball1, ball2) {
     const dist = ball1.pos.distanceTo(ball2.pos);
@@ -50,7 +51,7 @@ export function resolveCollision(ball1, ball2) {
         const invMass1 = 1.0 / Math.max(ball1.mass, 1e-10);
         const invMass2 = 1.0 / Math.max(ball2.mass, 1e-10);
 
-        j = -(1 + e) * vRel / (invMass1 + invMass2);
+        j = impulse(ball1.mass, ball2.mass, vRel, 0, e);
 
         const impulseVec = n.clone().multiplyScalar(j);
         ball1.vel.add(impulseVec.clone().multiplyScalar(invMass1));
@@ -87,7 +88,7 @@ function separateBalls(ball1, ball2) {
     const ratio1 = inv1 / totalInvMass;
     const ratio2 = inv2 / totalInvMass;
 
-    const percent = 0.8;
+    const percent = 0.95;
     const slop = 0.0001;
     
     const correctionMag =

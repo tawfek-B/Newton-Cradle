@@ -51,7 +51,7 @@ export class Rope {
     }
 
     setLength(length) {
-        this.restLength = length;
+        this.restLength = Math.max(length, 0.1);
         this.reset();
     }
 
@@ -60,24 +60,58 @@ export class Rope {
     }
 
     syncGeometry() {
+        if (this.nodes.length === 0) {
+            this.reset();
+            return;
+        }
+
         const expectedSegLength = this.restLength / this.segments;
-        let rebuild = false;
+        let needsReset = false;
 
         for (let i = 0; i < this.nodes.length - 1; i++) {
             const d = this.nodes[i].distanceTo(this.nodes[i + 1]);
-            if (Math.abs(d - expectedSegLength) > expectedSegLength * 0.5) {
-                rebuild = true;
+            if (Math.abs(d - expectedSegLength) > expectedSegLength * 1.5) {
+                needsReset = true;
                 break;
             }
         }
 
         const safeNodes = this.getSafeNodes();
-        if (safeNodes.length !== this.nodes.length || rebuild) {
+        if (safeNodes.length !== this.nodes.length || needsReset) {
             this.reset();
         }
 
-        const points = [this.anchor, ...this.nodes, this.ball.pos].filter(isFiniteVec3);
-        this.line.geometry.setFromPoints(points);
+        // At rest (velocity≈0): rope renders as taut straight line
+        // In motion: shows full physics-based rope dynamics
+        const ball = this.ball;
+        const speed = ball.vel ? ball.vel.length() : 0;
+        const omega = ball.omega || 0;
+        const motion = speed * speed + omega * omega;
+
+        const thresholdLow = 0.01;
+        const thresholdHigh = 0.3;
+        let blend = 0;
+        if (motion > thresholdLow) {
+            blend = Math.min(1, Math.max(0,
+                (motion - thresholdLow) / (thresholdHigh - thresholdLow)
+            ));
+        }
+
+        const allPoints = [this.anchor];
+        const numNodes = this.nodes.length;
+        for (let i = 0; i < numNodes; i++) {
+            const t = (i + 1) / (numNodes + 1);
+            const straightPos = this.anchor.clone().lerp(ball.pos, t);
+            const blendedPos = straightPos.clone().lerp(this.nodes[i], blend);
+            allPoints.push(blendedPos);
+        }
+        allPoints.push(ball.pos);
+
+        const renderPoints = allPoints.filter(isFiniteVec3);
+
+        if (renderPoints.length >= 2) {
+            this.line.geometry.setFromPoints(renderPoints);
+        }
     }
 
     addToScene(scene) {

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { DEBUG, MATERIALS } from '../core/Constants.js';
 import { Rope } from './Rope.js';
-import { createBallDebug } from '../core/Debug.js';
+import { updateTrail } from '../rendering/TrailRenderer.js';
 import { updateBallMass } from '../main.js';
 
 function isFiniteVec3(v) {
@@ -215,42 +215,16 @@ export class Ball {
     this.ropeA.syncGeometry();
     this.ropeB.syncGeometry();
 
-    if (isFiniteVec3(this.pos)) {
-      this.trailPoints.push(this.pos.clone());
-    }
+    this.trailPoints.push(this.pos.clone());
 
     if (this.trailPoints.length > this.maxTrail) {
       this.trailPoints.shift();
     }
 
-    const positions = [];
-    const colors = [];
-
-    for (let i = 0; i < this.trailPoints.length; i++) {
-      const p = this.trailPoints[i];
-      if (!isFiniteVec3(p)) continue;
-      positions.push(p.x, p.y, p.z);
-      const t = i / this.trailPoints.length;
-      const color = new THREE.Color();
-      color.setHSL(t, 1.0, 0.4);
-      colors.push(color.r, color.g, color.b);
-    }
-
-    this.trailGeometry.dispose();
-    this.trailGeometry = new THREE.BufferGeometry();
-    this.trailGeometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(positions, 3),
-    );
-    this.trailGeometry.setAttribute(
-      "color",
-      new THREE.Float32BufferAttribute(colors, 3),
-    );
-    this.trailLine.geometry = this.trailGeometry;
+    updateTrail(this);
   }
 
-  update(scene) {
-    createBallDebug(scene);
+  update() {
     this.syncMesh();
   }
 }

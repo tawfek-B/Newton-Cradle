@@ -1,4 +1,5 @@
-import * as THREE from "three";
+import { clamp } from '../utils/MathUtils.js';
+
 export class SoundManager {
     static #instance = null;
 
@@ -143,7 +144,7 @@ export class SoundManager {
 
         // Radius affects resonance/impact weight
         // Larger balls sound slightly louder/deeper
-        const radiusFactor = THREE.MathUtils.clamp(
+        const radiusFactor = clamp(
             ballRadius / 0.2,
             0.75,
             1.5

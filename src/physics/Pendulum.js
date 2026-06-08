@@ -70,7 +70,7 @@ export function stepPendulumSubstep(ball, h, damping, gravityVec) {
 
         const radialSpeed = ball.vel.dot(rHat);
         if (radialSpeed > 0) {
-            ball.vel.sub(rHat.clone().multiplyScalar(radialSpeed * 0.2));
+            ball.vel.sub(rHat.clone().multiplyScalar(radialSpeed));
         }
     }
 
