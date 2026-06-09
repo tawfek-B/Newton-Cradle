@@ -29,6 +29,12 @@ export class Rope {
         this.vels = [];
         this.restLength = 1;
 
+        this.twistAngle = 0;
+        this.twistOmega = 0;
+
+        this.torsionK = 20;
+        this.torsionDamping = 2;
+
         this.line = new THREE.Line(
             new THREE.BufferGeometry(),
             new THREE.LineBasicMaterial({ color: 0xffffff })
@@ -40,11 +46,22 @@ export class Rope {
     reset() {
         this.nodes = [];
         this.vels = [];
-        this.restLength = this.anchor.distanceTo(this.ball.pos);
+
+        this.restLength =
+            this.anchor.distanceTo(this.ball.pos);
+
+        this.twistAngle = 0;
+        this.twistOmega = 0;
 
         for (let i = 1; i < this.segments; i++) {
             const t = i / this.segments;
-            const p = this.anchor.clone().lerp(this.ball.pos, t);
+
+            const p =
+                this.anchor.clone().lerp(
+                    this.ball.pos,
+                    t
+                );
+
             this.nodes.push(p);
             this.vels.push(new THREE.Vector3());
         }
@@ -88,23 +105,79 @@ export class Rope {
         const omega = ball.omega || 0;
         const motion = speed * speed + omega * omega;
 
-        const thresholdLow = 0.01;
+        const thresholdLow = 0.001;
         const thresholdHigh = 0.3;
         let blend = 0;
-        if (motion > thresholdLow) {
+
+        const distanceFromAnchor = this.anchor.distanceTo(this.ball.pos);
+
+        if (motion < thresholdLow && Math.abs(distanceFromAnchor - this.restLength) < 0.001) {
+            blend = 0; // Fully taut
+        } else {
             blend = Math.min(1, Math.max(0,
                 (motion - thresholdLow) / (thresholdHigh - thresholdLow)
             ));
         }
 
         const allPoints = [this.anchor];
+
+        const ropeAxis =
+            ball.pos.clone().sub(this.anchor).normalize();
+
+        const reference =
+            Math.abs(ropeAxis.y) < 0.9
+                ? new THREE.Vector3(0, 1, 0)
+                : new THREE.Vector3(1, 0, 0);
+
+        const side =
+            new THREE.Vector3()
+                .crossVectors(ropeAxis, reference)
+                .normalize();
+
+        const up =
+            new THREE.Vector3()
+                .crossVectors(side, ropeAxis)
+                .normalize();
+
         const numNodes = this.nodes.length;
+
         for (let i = 0; i < numNodes; i++) {
-            const t = (i + 1) / (numNodes + 1);
-            const straightPos = this.anchor.clone().lerp(ball.pos, t);
-            const blendedPos = straightPos.clone().lerp(this.nodes[i], blend);
+
+            const t =
+                (i + 1) / (numNodes + 1);
+
+            const straightPos =
+                this.anchor.clone().lerp(
+                    ball.pos,
+                    t
+                );
+
+            const blendedPos =
+                straightPos.clone().lerp(
+                    this.nodes[i],
+                    blend
+                );
+
+            const twist =
+                this.twistAngle * t;
+
+            const twistOffset =
+                side.clone()
+                    .multiplyScalar(
+                        Math.sin(twist) * 0.01
+                    )
+                    .add(
+                        up.clone()
+                            .multiplyScalar(
+                                Math.cos(twist) * 0.01
+                            )
+                    );
+
+            blendedPos.add(twistOffset);
+
             allPoints.push(blendedPos);
         }
+
         allPoints.push(ball.pos);
 
         const renderPoints = allPoints.filter(isFiniteVec3);

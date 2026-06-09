@@ -59,6 +59,15 @@ export function stepPendulumSubstep(ball, h, damping, gravityVec) {
     integrateSemiImplicitEuler(ball, accel, h);
     applyDamping(ball, h, damping);
 
+    if (PHYSICS.AIR_DRAG_QUADRATIC > 0) {
+        const speed = ball.vel.length();
+        if (speed > 0) {
+            const quadFactor = 1 - PHYSICS.AIR_DRAG_QUADRATIC * speed * h;
+            // ball.vel.multiplyScalar(Math.max(0, quadFactor));
+            ball.omega *= Math.max(0, 1 - PHYSICS.AIR_DRAG_QUADRATIC * Math.abs(ball.omega) * h);
+        }
+    }
+
     const r = ball.pos.clone().sub(ball.pivot);
     const dist = r.length();
 

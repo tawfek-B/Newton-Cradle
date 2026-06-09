@@ -61,6 +61,26 @@ export function resolveCollision(ball1, ball2) {
         energyLost = (1 - e * e) * 0.5 * reducedMass * vRel * vRel;
     }
 
+    const spinTransfer = 0.85;
+
+    const avgSpin =
+        (ball1.spinOmega +
+            ball2.spinOmega) * 0.5;
+
+    ball1.spinOmega =
+        THREE.MathUtils.lerp(
+            ball1.spinOmega,
+            avgSpin,
+            spinTransfer
+        );
+
+    ball2.spinOmega =
+        THREE.MathUtils.lerp(
+            ball2.spinOmega,
+            avgSpin,
+            spinTransfer
+        );
+
     const sepDelta = separateBalls(ball1, ball2);
 
     return {
@@ -90,13 +110,13 @@ function separateBalls(ball1, ball2) {
 
     const percent = 0.95;
     const slop = 0.0001;
-    
+
     const correctionMag =
         Math.max(overlap - slop, 0) * percent;
-    
+
     const correction =
         n.clone().multiplyScalar(correctionMag);
-        
+
     ball1.pos.sub(correction.clone().multiplyScalar(ratio1));
     ball2.pos.add(correction.clone().multiplyScalar(ratio2));
 
@@ -112,7 +132,7 @@ export function computeHertzianForce(ball1, ball2) {
     }
 
     const R_eff = (ball1.radius * ball2.radius)
-                / (ball1.radius + ball2.radius);
+        / (ball1.radius + ball2.radius);
 
     const k_h = COLLISION.HERTZ_STIFFNESS;
 

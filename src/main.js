@@ -63,24 +63,26 @@ const params = {
   length: 1,
   gravity: PHYSICS.GRAVITY,
   angle: 90,
-  time_pace: 1,
+  // time_pace: 1,
+  time_pace: 0.2,
   scene_offset_y: 0,
   vector_magnitude: 0.1,
-  materialType: 'metal',
-  elasticity: 0.96,
+  materialType: 'wood',
+  // elasticity: 0.96,
+  elasticity: 1,
   ropeDamping: 10
 };
 
 function handleMaterialChange(type) {
   cradle.setMaterialType(type);
   const firstBall = balls[0];
-  
+
   // Sync elasticity slider with material's natural restitution
   params.elasticity = firstBall.restitution;
   if (elasticityController) {
     elasticityController.updateDisplay();
   }
-  
+
   console.log(`All balls changed to: ${type}. ` +
     `Restitution: ${firstBall.restitution}, ` +
     `Friction: ${firstBall.friction}, ` +
@@ -101,6 +103,13 @@ params.onMaterialChange = handleMaterialChange;
 
 function setAngle() {
   cradle.resetToAngle(params.angle);
+  
+  balls.forEach((ball, index) => {
+    if (index === 4)
+      ball.spinOmega = 50;
+    else
+      ball.spinOmega = 0;
+  });
 }
 
 const gui = createGUI(params, settings, setAngle);
@@ -141,7 +150,7 @@ window.addEventListener(
 window.addEventListener('click', initAudio);
 window.addEventListener('keydown', initAudio);
 window.addEventListener('touchstart', initAudio);
-
+balls[4].spinOmega = 20;
 function animate() {
   requestAnimationFrame(animate);
 
@@ -175,6 +184,51 @@ function animate() {
   cradle.update(dt, params.damping, params.gravity);
 
   for (const ball of balls) {
+
+    const deltaTwist =
+      ball.spinOmega * dt;
+
+    console.log(ball.spinOmega, deltaTwist);
+
+    ball.ropeA.twistAngle += deltaTwist;
+    ball.ropeB.twistAngle += deltaTwist;
+
+    const torqueA =
+      -ball.ropeA.torsionK *
+      ball.ropeA.twistAngle
+      - ball.ropeA.torsionDamping *
+      ball.ropeA.twistOmega;
+
+    const torqueB =
+      -ball.ropeB.torsionK *
+      ball.ropeB.twistAngle
+      - ball.ropeB.torsionDamping *
+      ball.ropeB.twistOmega;
+
+    const ropeTorque =
+      torqueA + torqueB;
+
+    ball.spinAlpha =
+      (ball.spinTorque + ropeTorque) /
+      ball.momentOfInertia;
+
+    ball.spinOmega +=
+      ball.spinAlpha * dt;
+
+    ball.spinOmega *=
+      Math.exp(
+        -ball.spinDamping * dt
+      );
+
+    ball.spinAngle +=
+      ball.spinOmega * dt;
+
+    ball.ropeA.twistOmega =
+      ball.spinOmega;
+
+    ball.ropeB.twistOmega =
+      ball.spinOmega;
+
     ball.syncMesh();
   }
 

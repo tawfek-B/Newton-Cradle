@@ -19,6 +19,15 @@ export class Ball {
     this.radius = 0.2;
     this.mass = 261.38;
 
+    this.spinAngle = 0;
+    this.spinOmega = 0;
+    this.spinAlpha = 0;
+
+    this.spinDamping = 0.05;
+
+    this.momentOfInertia =
+      (2 / 5) * this.mass * this.radius * this.radius;
+
     this.restitution = 0.85;
     this.friction = 0.2;
     this.damping = 0.01;
@@ -164,8 +173,16 @@ export class Ball {
   }
 
   updateMass() {
-    const volume = (4 / 3) * Math.PI * Math.pow(this.radius, 3);
-    this.mass = MATERIALS[this.currentMaterialType.toUpperCase()].density * volume;
+    const volume =
+      (4 / 3) * Math.PI * Math.pow(this.radius, 3);
+
+    this.mass =
+      MATERIALS[this.currentMaterialType.toUpperCase()].density *
+      volume;
+
+    this.momentOfInertia =
+      (2 / 5) * this.mass * this.radius * this.radius;
+
     updateBallMass(this.mass);
   }
 
@@ -206,21 +223,30 @@ export class Ball {
 
   syncMesh() {
     if (!isFiniteVec3(this.pos)) {
-      this.pos.set(this.pivot.x, this.pivot.y - this.length, 0);
+      this.pos.set(
+        this.pivot.x,
+        this.pivot.y - this.length,
+        0
+      );
+  
       this.vel.set(0, 0, 0);
+  
       this.resetRopes();
     }
-
+  
     this.mesh.position.copy(this.pos);
+  
+    this.mesh.rotation.y = this.spinAngle;
+  
     this.ropeA.syncGeometry();
     this.ropeB.syncGeometry();
-
+  
     this.trailPoints.push(this.pos.clone());
-
+  
     if (this.trailPoints.length > this.maxTrail) {
       this.trailPoints.shift();
     }
-
+  
     updateTrail(this);
   }
 
