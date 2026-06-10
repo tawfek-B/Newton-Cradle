@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { clamp } from '../utils/MathUtils.js';
 
 function isFiniteVec3(v) {
     return Number.isFinite(v.x)
@@ -20,6 +21,7 @@ function stepSingleRope(rope, dt, gravity, outForce) {
 
     if (!nodes || nodes.length === 0) return;
 
+    const endpoint = rope.getTargetEndpoint();
     const links = nodes.length + 1;
     const segRest = Math.max(rope.restLength / links, 1e-4);
     const maxExt = segRest * 0.1;
@@ -31,8 +33,25 @@ function stepSingleRope(rope, dt, gravity, outForce) {
 
         const prevP = i === 0 ? rope.anchor : nodes[i - 1];
         const prevV = i === 0 ? new THREE.Vector3() : vels[i - 1];
-        const nextP = i === nodes.length - 1 ? ball.pos : nodes[i + 1];
-        const nextV = i === nodes.length - 1 ? ball.vel : vels[i + 1];
+        const nextP = i === nodes.length - 1 ? endpoint : nodes[i + 1];
+
+        // Surface velocity for the last node: center vel + tangential velocity from spin
+        let nextV;
+        if (i === nodes.length - 1) {
+            const leverArm = endpoint.clone().sub(ball.pos);
+            // v_tangential = omega × r for Y-axis spin
+            // omega = (0, spinOmega, 0), so v = (-spinOmega * r_z, 0, spinOmega * r_x)
+            const tangentialVel = new THREE.Vector3(
+                -ball.spinOmega * leverArm.z,
+                0,
+                ball.spinOmega * leverArm.x
+            );
+            
+            nextV = ball.vel.clone()
+                .add(tangentialVel.multiplyScalar(0));
+        } else {
+            nextV = vels[i + 1];
+        }
 
         const dPrev = p.clone().sub(prevP);
         const dNext = nextP.clone().sub(p);
@@ -41,8 +60,8 @@ function stepSingleRope(rope, dt, gravity, outForce) {
         const nPrev = dPrev.clone().divideScalar(lenPrev);
         const nNext = dNext.clone().divideScalar(lenNext);
 
-        let extPrev = THREE.MathUtils.clamp(Math.max(0, lenPrev - segRest), 0, maxExt);
-        let extNext = THREE.MathUtils.clamp(Math.max(0, lenNext - segRest), 0, maxExt);
+        let extPrev = clamp(Math.max(0, lenPrev - segRest), 0, maxExt);
+        let extNext = clamp(Math.max(0, lenNext - segRest), 0, maxExt);
 
         if (extPrev < extEps) extPrev = 0;
         if (extNext < extEps) extNext = 0;
@@ -81,19 +100,39 @@ function stepSingleRope(rope, dt, gravity, outForce) {
 
     const tail = nodes[nodes.length - 1];
     const tailVel = vels[vels.length - 1];
-    const dTail = ball.pos.clone().sub(tail);
+    const dTail = endpoint.clone().sub(tail);
     const lenTail = Math.max(dTail.length(), 1e-6);
     const nTail = dTail.clone().divideScalar(lenTail);
 
-    let extTail = THREE.MathUtils.clamp(Math.max(0, lenTail - segRest), 0, maxExt);
+    let extTail = clamp(Math.max(0, lenTail - segRest), 0, maxExt);
     if (extTail < extEps) extTail = 0;
 
-    const relTail = ball.vel.clone().sub(tailVel).dot(nTail);
+    // Use surface velocity for relative velocity calculation
+    const leverArm = endpoint.clone().sub(ball.pos);
+    const tangentialVel = new THREE.Vector3(
+        -ball.spinOmega * leverArm.z,
+        0,
+        ball.spinOmega * leverArm.x
+    );
+    const surfaceVel = ball.vel.clone().add(tangentialVel);
+    const relTail = surfaceVel.clone().sub(tailVel).dot(nTail);
+
     const pullDamping = extTail > 0 ? -rope.damping * relTail : 0;
     const pullMag = rope.stiffness * extTail + pullDamping;
     const fTail = nTail.clone().multiplyScalar(-pullMag);
 
     outForce.add(fTail);
+
+    // Compute torque from rope force at surface point
+    // tau = r × F where r = lever arm, F = fTail
+    // Y component (spin axis): tau_y = r_z * F_x - r_x * F_z
+    const torqueY = leverArm.z * fTail.x - leverArm.x * fTail.z;
+
+    // Scale by substep size (dt = h) to get angular impulse for this substep.
+    // This is critical: stepSingleRope is called N times per frame, and without
+    // scaling, the accumulated torque would be overestimated by Nx.
+    const angularImpulse = torqueY * dt;
+    ball.spinTorque += angularImpulse;
 }
 
 export function applyElasticRopeForces(ball, dt, gravity) {
@@ -106,5 +145,10 @@ export function applyElasticRopeForces(ball, dt, gravity) {
     stepSingleRope(ball.ropeB, dt, gravity, ropeForce);
 
     clampVecLength(ropeForce, 1000);
+
+    // Clamp total angular impulse after both ropes have contributed
+    const MAX_IMPULSE = 10;
+    ball.spinTorque = Math.max(-MAX_IMPULSE, Math.min(MAX_IMPULSE, ball.spinTorque));
+
     return ropeForce;
 }

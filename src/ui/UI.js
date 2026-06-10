@@ -18,6 +18,8 @@ export function createGUI(params, settings, onApplyAngle) {
   gui.add(params, 'angle', -150, 150);
   gui.add({ apply: onApplyAngle }, 'apply').name('Apply Angle');
 
+  const elasticityController = gui.add(params, 'elasticity', 0, 1, 0.01).name('Elasticity (e)');
+
   gui.add(params, 'mass', 1, 350, 1);
   gui.add(params, 'length', 0.5, 2);
   gui.add(params, 'damping', -1, 1);
@@ -26,6 +28,7 @@ export function createGUI(params, settings, onApplyAngle) {
   gui.add(params, 'time_pace', 0.01, 4, 0.01);
   gui.add(params, 'scene_offset_y', -3, 3, 0.01).name('Scene Height');
   gui.add(params, 'vector_magnitude', 0.1, 1, 0.01).name('Vector Magnitude');
+  gui.add(params, 'ropeDamping', 0, 20, 0.1).name('Rope Damping');
 
 const materialOptions = {
         'Metal': 'metal',

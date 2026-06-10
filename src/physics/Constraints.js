@@ -103,18 +103,29 @@ export function updateTension(ball, rHat, a_c_mag, g, isTaut) {
         const det = m11 * m22 - m12 * m12;
 
         if (Math.abs(det) > 1e-8) {
-            TA = (v1 * m22 - v2 * m12) / det;
-            TB = (v2 * m11 - v1 * m12) / det;
-        }
+            TA = (v1 * m22 - v2 * m12) / -det;
+            TB = (v2 * m11 - v1 * m12) / -det;
 
-        TA = Math.max(0, -TA);
-        TB = Math.max(0, -TB);
+            TA = Math.max(0, TA);
+            TB = Math.max(0, TB);
+        } else {
+            // If determinant is too small, approximate tension as evenly distributed
+            TA = TB = T_total / 2;
+        }
+    } else {
+        // If the rope is not taut, tension should be zero
+        TA = 0;
+        TB = 0;
     }
 
+    // Update ball's tension properties
     ball.TA = TA;
     ball.TB = TB;
 
     ball.tensionA = uA.clone().multiplyScalar(TA);
     ball.tensionB = uB.clone().multiplyScalar(TB);
-    ball.tensionDir = ball.tensionA.clone().add(ball.tensionB);
+
+    ball.tensionDir =
+        ball.tensionA.clone()
+            .add(ball.tensionB);
 }

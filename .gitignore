@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+*.md
+*.zip
+*.7z
+report_extracted.txt

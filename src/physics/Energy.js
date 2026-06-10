@@ -1,8 +1,9 @@
 import { PHYSICS } from '../core/Constants.js';
+import { kineticEnergy, potentialEnergy } from '../utils/PhysicsUtils.js';
 
 export function computeEnergy(ball, gravity = PHYSICS.GRAVITY) {
-  const KE = 0.5 * ball.mass * ball.vel.lengthSq();
-  const PE = ball.mass * gravity * ball.pos.y;
+  const KE = kineticEnergy(ball.mass, ball.vel.length());
+  const PE = potentialEnergy(ball.mass, gravity, ball.pos.y);
   const total = KE + PE;
 
   if (ball.E0 === undefined) ball.E0 = total;
@@ -12,8 +13,8 @@ export function computeEnergy(ball, gravity = PHYSICS.GRAVITY) {
 }
 
 export function updateEnergyState(ball, g = PHYSICS.GRAVITY) {
-  const KE = Math.abs(0.5 * ball.mass * ball.vel.lengthSq());
-  const PE = Math.abs(ball.mass * g * (ball.pos.y));
+  const KE = Math.abs(kineticEnergy(ball.mass, ball.vel.length()));
+  const PE = Math.abs(potentialEnergy(ball.mass, g, ball.pos.y));
   let E = KE + PE;
 
   if (ball.E0 === undefined) {

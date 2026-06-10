@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { DEBUG, MATERIALS } from '../core/Constants.js';
 import { Rope } from './Rope.js';
-import { createBallDebug } from '../core/Debug.js';
+import { updateTrail } from '../rendering/TrailRenderer.js';
 import { updateBallMass } from '../main.js';
 
 function isFiniteVec3(v) {
@@ -18,6 +18,16 @@ export class Ball {
 
     this.radius = 0.2;
     this.mass = 261.38;
+
+    this.spinAngle = 0;
+    this.spinOmega = 0;
+    this.spinAlpha = 0;
+    this.spinTorque = 0;
+
+    this.spinDamping = 0.05;
+
+    this.momentOfInertia =
+      (2 / 5) * this.mass * this.radius * this.radius;
 
     this.restitution = 0.85;
     this.friction = 0.2;
@@ -37,6 +47,13 @@ export class Ball {
     this.pos = new THREE.Vector3(this.pivot.x, this.pivot.y - this.length, 0);
     this.vel = new THREE.Vector3();
     this.acc = new THREE.Vector3();
+
+    // Surface attachment points (local to ball center, pointing toward each anchor)
+    // anchorA=(x,2,0.5), ball.pos=(x,1,0) at rest → dir = (0, 1, 0.5)
+    const dirA = this.anchorA.clone().sub(this.pos).normalize();
+    const dirB = this.anchorB.clone().sub(this.pos).normalize();
+    this.localAttachA = dirA.multiplyScalar(this.radius * 0.95);
+    this.localAttachB = dirB.multiplyScalar(this.radius * 0.95);
 
     this.materials = {
       metal: null,
@@ -119,7 +136,7 @@ export class Ball {
       color: 0xffffff,
     });
 
-    const geometry = new THREE.SphereGeometry(this.radius, 32, 32);
+    const geometry = new THREE.SphereGeometry(this.radius, 128, 128);
 
     const material = new THREE.MeshStandardMaterial({
       color: 0x909090,
@@ -137,6 +154,7 @@ export class Ball {
     this.ropeA = new Rope({
       anchor: this.anchorA,
       ball: this,
+      attachSide: 'A',
       segments: this.ropeSegments,
       nodeMass: this.ropeNodeMass,
       stiffness: this.ropeStiffness,
@@ -147,6 +165,7 @@ export class Ball {
     this.ropeB = new Rope({
       anchor: this.anchorB,
       ball: this,
+      attachSide: 'B',
       segments: this.ropeSegments,
       nodeMass: this.ropeNodeMass,
       stiffness: this.ropeStiffness,
@@ -164,8 +183,16 @@ export class Ball {
   }
 
   updateMass() {
-    const volume = (4 / 3) * Math.PI * Math.pow(this.radius, 3);
-    this.mass = MATERIALS[this.currentMaterialType.toUpperCase()].density * volume;
+    const volume =
+      (4 / 3) * Math.PI * Math.pow(this.radius, 3);
+
+    this.mass =
+      MATERIALS[this.currentMaterialType.toUpperCase()].density *
+      volume;
+
+    this.momentOfInertia =
+      (2 / 5) * this.mass * this.radius * this.radius;
+
     updateBallMass(this.mass);
   }
 
@@ -174,6 +201,18 @@ export class Ball {
     this.friction = physicalMat.friction;
     this.damping = physicalMat.damping;
     this.updateMass();
+  }
+
+  getSurfaceAttachA() {
+    const rotated = this.localAttachA.clone()
+        .applyAxisAngle(new THREE.Vector3(0, 1, 0), this.spinAngle);
+    return this.pos.clone().add(rotated);
+  }
+
+  getSurfaceAttachB() {
+    const rotated = this.localAttachB.clone()
+        .applyAxisAngle(new THREE.Vector3(0, 1, 0), this.spinAngle);
+    return this.pos.clone().add(rotated);
   }
 
   setMaterialType(type) {
@@ -206,51 +245,34 @@ export class Ball {
 
   syncMesh() {
     if (!isFiniteVec3(this.pos)) {
-      this.pos.set(this.pivot.x, this.pivot.y - this.length, 0);
+      this.pos.set(
+        this.pivot.x,
+        this.pivot.y - this.length,
+        0
+      );
+  
       this.vel.set(0, 0, 0);
+  
       this.resetRopes();
     }
-
+  
     this.mesh.position.copy(this.pos);
+  
+    this.mesh.rotation.y = this.spinAngle;
+  
     this.ropeA.syncGeometry();
     this.ropeB.syncGeometry();
-
-    if (isFiniteVec3(this.pos)) {
-      this.trailPoints.push(this.pos.clone());
-    }
-
+  
+    this.trailPoints.push(this.pos.clone());
+  
     if (this.trailPoints.length > this.maxTrail) {
       this.trailPoints.shift();
     }
-
-    const positions = [];
-    const colors = [];
-
-    for (let i = 0; i < this.trailPoints.length; i++) {
-      const p = this.trailPoints[i];
-      if (!isFiniteVec3(p)) continue;
-      positions.push(p.x, p.y, p.z);
-      const t = i / this.trailPoints.length;
-      const color = new THREE.Color();
-      color.setHSL(t, 1.0, 0.4);
-      colors.push(color.r, color.g, color.b);
-    }
-
-    this.trailGeometry.dispose();
-    this.trailGeometry = new THREE.BufferGeometry();
-    this.trailGeometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(positions, 3),
-    );
-    this.trailGeometry.setAttribute(
-      "color",
-      new THREE.Float32BufferAttribute(colors, 3),
-    );
-    this.trailLine.geometry = this.trailGeometry;
+  
+    updateTrail(this);
   }
 
-  update(scene) {
-    createBallDebug(scene);
+  update() {
     this.syncMesh();
   }
 }

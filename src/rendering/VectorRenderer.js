@@ -31,18 +31,7 @@ function createTextSprite(text) {
   return { sprite, canvas, ctx, texture };
 }
 
-function updateText(data, text) {
-  const { canvas, ctx, texture } = data;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = 'white';
-  ctx.font = '40px Arial';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-
-  texture.needsUpdate = true;
-}
+import { updateLabel } from './LabelRenderer.js';
 
 export function initVectorRendering(ball) {
   ball.vectorMagnifier = 0.1;
@@ -184,9 +173,15 @@ export function updateVectors(ball, mag, gravity = PHYSICS.GRAVITY) {
     ball.pos.clone().add(ball.acc.clone().multiplyScalar(s))
   ]);
 
+  const r = PHYSICS.EARTH_RADIUS;
+  const G = PHYSICS.GRAVITATIONAL_CONSTANT;
+  const M = PHYSICS.EARTH_MASS;
+
+  const g = (G * M) / (r * r);
+
   ball.weightLine.geometry.setFromPoints([
     ball.pos,
-    ball.pos.clone().add(new THREE.Vector3(0, -gravity * ball.mass, 0).multiplyScalar(s/75))
+    ball.pos.clone().add(new THREE.Vector3(0, -g * ball.mass, 0).multiplyScalar(s/75))
   ]);
 
   const tan = ball.acc_tangential || new THREE.Vector3();
@@ -212,15 +207,15 @@ export function updateVectors(ball, mag, gravity = PHYSICS.GRAVITY) {
   const a = ball.alphaVec || new THREE.Vector3();
   ball.alphaVecLine.geometry.setFromPoints([ball.pos, ball.pos.clone().add(a.clone().multiplyScalar(s))]);
 
-  updateText(ball.velLabelData, ball.vel.length().toFixed(2) + ' m/s');
-  updateText(ball.accLabelData, ball.acc.length().toFixed(2) + ' m/s²');
-  updateText(ball.weightLabelData, (Math.abs(gravity) * ball.mass).toFixed(2) + ' N');
-  updateText(ball.tanLabelData, tan.length().toFixed(2) + ' m/s²');
-  updateText(ball.tensionALabelData, tA.length().toFixed(2) + ' N');
-  updateText(ball.tensionBLabelData, tB.length().toFixed(2) + ' N');
-  updateText(ball.cenLabelData, c.length().toFixed(2) + ' m/s²');
-  updateText(ball.angVelLabelData, w.length().toFixed(2) + ' rad/s');
-  updateText(ball.angAccLabelData, a.length().toFixed(2) + ' rad/s²');
+  updateLabel(ball.velLabelData, ball.vel.length().toFixed(2) + ' m/s');
+  updateLabel(ball.accLabelData, ball.acc.length().toFixed(2) + ' m/s²');
+  updateLabel(ball.weightLabelData, (Math.abs(gravity) * ball.mass).toFixed(2) + ' N');
+  updateLabel(ball.tanLabelData, tan.length().toFixed(2) + ' m/s²');
+  updateLabel(ball.tensionALabelData, tA.length().toFixed(2) + ' N');
+  updateLabel(ball.tensionBLabelData, tB.length().toFixed(2) + ' N');
+  updateLabel(ball.cenLabelData, c.length().toFixed(2) + ' m/s²');
+  updateLabel(ball.angVelLabelData, w.length().toFixed(2) + ' rad/s');
+  updateLabel(ball.angAccLabelData, a.length().toFixed(2) + ' rad/s²');
 
   ball.velLabel.position.copy(ball.pos).add(ball.vel.clone().multiplyScalar(s));
   ball.accLabel.position.copy(ball.pos).add(ball.acc.clone().multiplyScalar(s));

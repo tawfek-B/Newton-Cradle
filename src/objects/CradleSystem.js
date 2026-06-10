@@ -18,6 +18,8 @@ import {
 
 import { PHYSICS, COLLISION } from '../core/Constants.js';
 
+import { degToRad } from '../utils/MathUtils.js';
+
 const STABLE_H = 1 / 2000;
 
 export class CradleSystem {
@@ -28,56 +30,26 @@ export class CradleSystem {
         this.prevCollisionPairs = new Set();
     }
 
-    #pairId(i, j) {
+    pairId(i, j) {
         return `${Math.min(i, j)}-${Math.max(i, j)}`;
     }
 
-    #projectBallToArc(ball) {
-        const dx = ball.pos.x - ball.pivot.x;
-        const dy = ball.pos.y - ball.pivot.y;
 
-        const theta = Math.atan2(dx, -dy);
+    reTightenRope(ball) {
+        const r = ball.pos.clone().sub(ball.pivot);
+        const dist = r.length();
 
-        ball.pos.set(
-            ball.pivot.x + ball.length * Math.sin(theta),
-            ball.pivot.y - ball.length * Math.cos(theta),
-            0
-        );
+        if (dist < 1e-8) return;
 
-        ball.theta = theta;
+        const correction = dist - ball.length;
 
-        const radialX = Math.sin(theta);
-        const radialY = -Math.cos(theta);
-
-        const radialSpeed =
-            ball.vel.x * radialX + ball.vel.y * radialY;
-
-        ball.vel.x -= radialSpeed * radialX;
-        ball.vel.y -= radialSpeed * radialY;
-
-        const tangentDirX = Math.cos(theta);
-        const tangentDirY = Math.sin(theta);
-        ball.omega = (
-            ball.vel.x * tangentDirX +
-            ball.vel.y * tangentDirY
-        ) / Math.max(ball.length, 1e-6);
-    }
-
-    #shiftRopeNodes(ball, displacement) {
-        const len = displacement.length();
-        if (len < 1e-10) return;
-
-        if (ball.ropeA && ball.ropeA.nodes) {
-            for (const node of ball.ropeA.nodes) {
-                node.add(displacement);
-            }
+        if (correction > 0) {
+            const dir = r.multiplyScalar(1 / dist);
+            ball.pos.sub(dir.multiplyScalar(correction * 0.8));
         }
 
-        if (ball.ropeB && ball.ropeB.nodes) {
-            for (const node of ball.ropeB.nodes) {
-                node.add(displacement);
-            }
-        }
+        const radialVel = r.normalize().multiplyScalar(ball.vel.dot(r.normalize()));
+        ball.vel.sub(radialVel);
     }
 
     update(
@@ -138,20 +110,12 @@ export class CradleSystem {
                         const b1PosBefore = b1.pos.clone();
                         const b2PosBefore = b2.pos.clone();
 
-                        const pid = this.#pairId(i, j);
+                        const pid = this.pairId(i, j);
 
                         const result = resolveCollision(b1, b2);
 
-                        this.#projectBallToArc(b1);
-                        this.#projectBallToArc(b2);
-
-                        const b1Disp = new THREE.Vector3()
-                            .copy(b1.pos).sub(b1PosBefore);
-                        const b2Disp = new THREE.Vector3()
-                            .copy(b2.pos).sub(b2PosBefore);
-
-                        this.#shiftRopeNodes(b1, b1Disp);
-                        this.#shiftRopeNodes(b2, b2Disp);
+                        this.reTightenRope(b1);
+                        this.reTightenRope(b2);
 
                         if (
                             this.audioEnabled
@@ -171,6 +135,10 @@ export class CradleSystem {
                     }
                 }
 
+                for (const ball of this.balls) {
+                    if (ball.ropeA) ball.ropeA.enforceConstraints();
+                    if (ball.ropeB) ball.ropeB.enforceConstraints();
+                }
                 if (!anyCollision) break;
             }
         }
@@ -182,21 +150,9 @@ export class CradleSystem {
                 if (!b1 || !b2) continue;
 
                 if (detectCollision(b1, b2)) {
-                    const b1PosBefore = b1.pos.clone();
-                    const b2PosBefore = b2.pos.clone();
 
                     resolveCollision(b1, b2);
 
-                    this.#projectBallToArc(b1);
-                    this.#projectBallToArc(b2);
-
-                    const b1Disp = new THREE.Vector3()
-                        .copy(b1.pos).sub(b1PosBefore);
-                    const b2Disp = new THREE.Vector3()
-                        .copy(b2.pos).sub(b2PosBefore);
-
-                    this.#shiftRopeNodes(b1, b1Disp);
-                    this.#shiftRopeNodes(b2, b2Disp);
                 }
             }
         }
@@ -217,9 +173,7 @@ export class CradleSystem {
     resetToAngle(angleDeg) {
         if (!this.balls || this.balls.length === 0) return;
 
-        const angleRad = THREE.MathUtils
-            ? THREE.MathUtils.degToRad(angleDeg)
-            : angleDeg * Math.PI / 180;
+        const angleRad = degToRad(angleDeg);
 
         for (let i = 0; i < this.balls.length; i++) {
             const ball = this.balls[i];
@@ -244,6 +198,14 @@ export class CradleSystem {
 
             ball.vel.set(0, 0, 0);
 
+            ball.spinAngle = 0;
+            ball.spinOmega = 0;
+            ball.spinAlpha = 0;
+            ball.spinTorque = 0;
+
+            if (ball.ropeA) ball.ropeA.twistAngle = 0;
+            if (ball.ropeB) ball.ropeB.twistAngle = 0;
+
             if (ball.resetRopes) {
                 ball.resetRopes();
             }
@@ -265,6 +227,12 @@ export class CradleSystem {
     updateMasses(mass) {
         for (const ball of this.balls) {
             ball.mass = mass;
+        }
+    }
+
+    setElasticity(e) {
+        for (const ball of this.balls) {
+            ball.restitution = e;
         }
     }
 

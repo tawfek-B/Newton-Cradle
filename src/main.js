@@ -59,19 +59,30 @@ const settings = {
 
 const params = {
   mass: 261.38,
-  damping: 0,
+  damping: 0.1,
   length: 1,
   gravity: PHYSICS.GRAVITY,
   angle: 90,
   time_pace: 1,
+  // time_pace: 0.2,
   scene_offset_y: 0,
   vector_magnitude: 0.1,
-  materialType: 'metal'
+  materialType: 'metal',
+  elasticity: 0.96,
+  // elasticity: 1,
+  ropeDamping: 10
 };
 
 function handleMaterialChange(type) {
   cradle.setMaterialType(type);
   const firstBall = balls[0];
+
+  // Sync elasticity slider with material's natural restitution
+  params.elasticity = firstBall.restitution;
+  if (elasticityController) {
+    elasticityController.updateDisplay();
+  }
+
   console.log(`All balls changed to: ${type}. ` +
     `Restitution: ${firstBall.restitution}, ` +
     `Friction: ${firstBall.friction}, ` +
@@ -92,19 +103,37 @@ params.onMaterialChange = handleMaterialChange;
 
 function setAngle() {
   cradle.resetToAngle(params.angle);
+  
+  balls.forEach((ball, index) => {
+    if (index === 4)
+      ball.spinOmega = 30;
+    else
+      ball.spinOmega = 0;
+    ball.spinAngle = 0;
+    if (ball.ropeA) ball.ropeA.twistAngle = 0;
+    if (ball.ropeB) ball.ropeB.twistAngle = 0;
+  });
 }
 
 const gui = createGUI(params, settings, setAngle);
 createHUD();
 
 let massController = null;
+let elasticityController = null;
 gui.controllers.forEach(controller => {
   if (controller._name === 'mass') {
     massController = controller;
   }
+  if (controller._name === 'elasticity') {
+    elasticityController = controller;
+  }
 });
 
+// Apply initial elasticity override
 cradle.setMaterialType(params.materialType);
+
+// Apply initial elasticity
+cradle.setElasticity(params.elasticity);
 
 function initAudio() {
   SoundManager.getInstance().initialize();
@@ -138,6 +167,12 @@ function animate() {
   }
 
   cradle.updateMasses(params.mass);
+  cradle.setElasticity(params.elasticity);
+
+  for (const ball of balls) {
+    if (ball.ropeA) ball.ropeA.damping = params.ropeDamping;
+    if (ball.ropeB) ball.ropeB.damping = params.ropeDamping;
+  }
 
   g = params.gravity;
   scene.position.y = params.scene_offset_y;
@@ -149,9 +184,69 @@ function animate() {
 
   const dt = time.update(params.time_pace) * 2.25;
 
+  // Zero spinTorque before physics iteration — it will be accumulated
+  // by stepSingleRope during cradle.update()
+  for (const ball of balls) {
+    ball.spinTorque = 0;
+  }
+
   cradle.update(dt, params.damping, params.gravity);
 
   for (const ball of balls) {
+
+    const deltaTwist =
+      ball.spinOmega * dt;
+
+    ball.ropeA.twistAngle += deltaTwist;
+    ball.ropeB.twistAngle += deltaTwist;
+
+    const torqueA =
+      -ball.ropeA.torsionK *
+      ball.ropeA.twistAngle
+      - ball.ropeA.torsionDamping *
+      ball.ropeA.twistOmega;
+
+    const torqueB =
+      -ball.ropeB.torsionK *
+      ball.ropeB.twistAngle
+      - ball.ropeB.torsionDamping *
+      ball.ropeB.twistOmega;
+
+    const ropeTorque =
+      torqueA + torqueB;
+
+    const totalAngularImpulse =
+      ball.spinTorque + ropeTorque * dt;
+
+    ball.spinOmega +=
+      totalAngularImpulse /
+      ball.momentOfInertia;
+
+    ball.spinOmega *=
+      Math.exp(
+        -ball.spinDamping * dt
+      );
+
+    ball.spinAngle +=
+      ball.spinOmega * dt;
+
+    ball.spinAngle = ball.spinAngle % (2 * Math.PI);
+
+    // Slow auto-unwind when ball is nearly at rest
+    const restThreshold = 0.01;
+    if (Math.abs(ball.spinOmega) < restThreshold && ball.vel.length() < restThreshold) {
+      const unwindFactor = Math.pow(0.97, dt * 60);
+      ball.spinAngle *= unwindFactor;
+      ball.ropeA.twistAngle *= unwindFactor;
+      ball.ropeB.twistAngle *= unwindFactor;
+    }
+
+    ball.ropeA.twistOmega =
+      ball.spinOmega;
+
+    ball.ropeB.twistOmega =
+      ball.spinOmega;
+
     ball.syncMesh();
   }
 
