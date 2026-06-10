@@ -150,5 +150,6 @@ export function applyElasticRopeForces(ball, dt, gravity) {
     const MAX_IMPULSE = 10;
     ball.spinTorque = Math.max(-MAX_IMPULSE, Math.min(MAX_IMPULSE, ball.spinTorque));
 
+    clampVecLength(ropeForce, 1000);
     return ropeForce;
 }

@@ -17,4 +17,3 @@ export function degToRad(deg) {
 export function radToDeg(rad) {
     return rad * 180 / Math.PI;
 }
-
