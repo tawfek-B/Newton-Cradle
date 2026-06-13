@@ -9,7 +9,7 @@ import { scene, camera, renderer } from './world/World.js';
 
 import { SoundManager } from './audio/SoundManager.js';
 import { createGUI } from './ui/UI.js';
-import { createHUD } from './world/HUD.js';
+import { createHUD, updateHUD } from './world/HUD.js';
 import {
   addVectorsToScene,
   initVectorRendering,
@@ -23,7 +23,7 @@ controls.enableDamping = true;
 const NUM_BALLS = CRADLE.NUM_BALLS;
 const SPACING = CRADLE.BALL_SPACING;
 
-const balls = [];
+export const balls = [];
 
 for (let i = 0; i < NUM_BALLS; i++) {
   const x = (i - (NUM_BALLS - 1) / 2) * SPACING;
@@ -39,7 +39,12 @@ balls.forEach(ball => {
 
 const cradle = new CradleSystem(balls);
 
-let g = PHYSICS.GRAVITY;
+//since it currently initializes on planet Earth, these are the initial values (could change later)
+const G = PHYSICS.GRAVITATIONAL_CONSTANT;
+let M = PHYSICS.PLANETS.EARTH_MASS;
+let r = PHYSICS.PLANETS.EARTH_RADIUS;
+
+let g = G * M / (r * r);
 
 const time = new Time();
 
@@ -58,19 +63,23 @@ const settings = {
 };
 
 const params = {
+  angle: 90,
+  numBallsToMove: 1,
+  spinOmega: 0,
   mass: 261.38,
-  damping: 0.1,
+  damping: 0.01,
   length: 1,
   gravity: PHYSICS.GRAVITY,
-  angle: 90,
   time_pace: 1,
   // time_pace: 0.2,
   scene_offset_y: 0,
   vector_magnitude: 0.1,
   materialType: 'metal',
-  elasticity: 0.96,
-  // elasticity: 1,
-  ropeDamping: 10
+  // elasticity: 0.96,
+  elasticity: 1,
+  ropeDamping: 10,
+
+  HUD: true
 };
 
 function handleMaterialChange(type) {
@@ -79,9 +88,6 @@ function handleMaterialChange(type) {
 
   // Sync elasticity slider with material's natural restitution
   params.elasticity = firstBall.restitution;
-  if (elasticityController) {
-    elasticityController.updateDisplay();
-  }
 
   console.log(`All balls changed to: ${type}. ` +
     `Restitution: ${firstBall.restitution}, ` +
@@ -93,20 +99,32 @@ function handleMaterialChange(type) {
   if (massController) {
     massController.updateDisplay();
   }
+  if (elasticityController) {
+    elasticityController.updateDisplay();
+  }
 }
+
 
 export function updateBallMass(newMass) {
   params.mass = newMass;
 }
 
 params.onMaterialChange = handleMaterialChange;
+params.onPlanetChange = handlePlanetChange;
 
-function setAngle() {
-  cradle.resetToAngle(params.angle);
+params.elasticity = balls[0].restitution;
+
+function setAngle(spin = 0) {
+  console.log(spin);
+  const oldLength = balls.length;
+  cradle.resetToAngle(params.angle, params.numBallsToMove, params.numberOfBalls, scene);
   
+  if(oldLength !== balls.length)
+    balls = cradle.balls;
+
   balls.forEach((ball, index) => {
     if (index === 4)
-      ball.spinOmega = 30;
+      ball.spinOmega = spin;
     else
       ball.spinOmega = 0;
     ball.spinAngle = 0;
@@ -115,20 +133,62 @@ function setAngle() {
   });
 }
 
-const gui = createGUI(params, settings, setAngle);
-createHUD();
+// const axisnew = new THREE.AxesHelper(0.5);
+// axisnew.position.copy(balls[0].pos);
+// axisnew.scale.set(0.5, 0.5, 2);
+// scene.add(axisnew);
+
+const gui = createGUI(params, settings, setAngle, NUM_BALLS);
+const hudElements = createHUD();
 
 let massController = null;
 let elasticityController = null;
+let planetController = null;
+let gravityController = null;
 gui.controllers.forEach(controller => {
   if (controller._name === 'mass') {
     massController = controller;
   }
-  if (controller._name === 'elasticity') {
+  if (controller._name === 'Elasticity (e)') {
     elasticityController = controller;
+  }
+  if (controller._name === 'materialType') {
+    materialController = controller;
+  }
+  if (controller._name === 'Planet') {
+    planetController = controller;
+  }
+  if (controller._name === 'gravity') {
+    gravityController = controller;
   }
 });
 
+function handlePlanetChange(planet) {
+  console.log(planet);
+
+  if (planet === 'SPACE') {
+    params.gravity = 0;
+  } else if (planet === 'STRATOSPHERE') {
+    const M = PHYSICS.PLANETS['EARTH_MASS'];
+    const r = PHYSICS.PLANETS['EARTH_RADIUS'] + 30000; // 30 km up
+    params.gravity = (G * M) / (r * r);
+  } else if (planet === 'ISS') {
+    const M = PHYSICS.PLANETS['EARTH_MASS'];
+    const r = PHYSICS.PLANETS['EARTH_RADIUS'] + 400000; // 400 km up
+    params.gravity = (G * M) / (r * r);
+  } else {
+    const M = PHYSICS.PLANETS[`${planet}_MASS`];
+    const r = PHYSICS.PLANETS[`${planet}_RADIUS`];
+    params.gravity = (G * M) / (r * r);
+  }
+
+  console.log(params.gravity)
+
+  if (planetController && gravityController) {
+    planetController.updateDisplay();
+    gravityController.updateDisplay();
+  }
+}
 // Apply initial elasticity override
 cradle.setMaterialType(params.materialType);
 
@@ -254,6 +314,27 @@ function animate() {
     updateVectors(ball, params.vector_magnitude, params.gravity);
     setVectorVisibility(ball, settings);
   });
+
+  const accs = balls.map(ball => ball.acc.length());
+  const tans = balls.map(ball => ball.acc_tangential.length());
+  const cens = balls.map(ball => ball.acc_centripetal.length());
+  const vels = balls.map(ball => ball.vel.length());
+  const omegas = balls.map(ball => ball.omegaVec.length());
+  const alphas = balls.map(ball => ball.alphaVec.length());
+  const tens = balls.map(ball => (ball.tensionA.length() + ball.tensionB.length())/2);
+  const weights = balls.map(ball => Math.abs(params.gravity) * ball.mass);
+
+  //add all values to HUD for the all balls (can be extended to show multiple balls later if desired)
+  updateHUD(hudElements, {
+    acc: accs,
+    tan: tans,
+    cen: cens,
+    vel: vels,
+    omega: omegas,
+    alpha: alphas,
+    ten: tens,
+    weight: weights
+  }, params.HUD);
 
   controls.update();
   renderer.render(scene, camera);

@@ -173,15 +173,9 @@ export function updateVectors(ball, mag, gravity = PHYSICS.GRAVITY) {
     ball.pos.clone().add(ball.acc.clone().multiplyScalar(s))
   ]);
 
-  const r = PHYSICS.EARTH_RADIUS;
-  const G = PHYSICS.GRAVITATIONAL_CONSTANT;
-  const M = PHYSICS.EARTH_MASS;
-
-  const g = (G * M) / (r * r);
-
   ball.weightLine.geometry.setFromPoints([
     ball.pos,
-    ball.pos.clone().add(new THREE.Vector3(0, -g * ball.mass, 0).multiplyScalar(s/75))
+    ball.pos.clone().add(new THREE.Vector3(0, -gravity * ball.mass, 0).multiplyScalar(s/75))
   ]);
 
   const tan = ball.acc_tangential || new THREE.Vector3();

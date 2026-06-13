@@ -12,6 +12,7 @@ function createBox(color) {
     el.style.color = "white";
     el.style.position = "absolute";
     el.style.left = "16px";
+    el.style.fontSize = '14px';
     el.textContent = text;
     return el;
   }
@@ -52,4 +53,26 @@ function createBox(color) {
     });
   
     return elements;
+  }
+
+  function setHUDVisibility(elements, visible) {
+    for (const key in elements) {
+      elements[key].box.style.display = visible ? "block" : "none";
+      elements[key].text.style.display = visible ? "block" : "none";
+    }
+  }
+
+  export function updateHUD(elements, data, visible) {
+    for (const key in data) {
+      if (elements[key]) {
+        //each text should contain an array of values
+        const value = data[key];
+        if (Array.isArray(value)) {
+          elements[key].text.textContent = `${elements[key].text.textContent.split(':')[0]}: [${value.map(v => v.toFixed(2)).join(', ')}]`;
+        } else {
+          elements[key].text.textContent = `${elements[key].text.textContent.split(':')[0]}: ${value.toFixed(2)}`;
+        }
+      }
+    }
+    setHUDVisibility(elements,visible);
   }

@@ -29,7 +29,7 @@ export class Ball {
     this.momentOfInertia =
       (2 / 5) * this.mass * this.radius * this.radius;
 
-    this.restitution = 0.85;
+    this.restitution = 0.96;
     this.friction = 0.2;
     this.damping = 0.01;
 
@@ -67,73 +67,101 @@ export class Ball {
     const metalAlbedo = textureLoader.load(
       "/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_BaseColor.jpg",
     );
+    metalAlbedo.colorSpace = THREE.SRGBColorSpace;
     const metalMetal = textureLoader.load(
       "/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_Metallic.jpg",
-    )
+    );
+    metalMetal.colorSpace = THREE.NoColorSpace;
     const metal_nor = textureLoader.load(
       "/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_Normal.png",
     );
+    metal_nor.colorSpace = THREE.NoColorSpace;
     const metal_ao = textureLoader.load(
       '/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_AmbientOcclusion.jpg',
     );
+    metal_ao.colorSpace = THREE.NoColorSpace;
     const metal_rough = textureLoader.load(
       "/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_Roughness.jpg",
     );
+    metal_rough.colorSpace = THREE.NoColorSpace;
+    const metal_disp = textureLoader.load(
+      "/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_Displacement.jpg",
+    );
+    metal_disp.colorSpace = THREE.NoColorSpace;
     this.materials.metal = new THREE.MeshStandardMaterial({
       map: metalAlbedo,
       metalnessMap: metalMetal,
       roughnessMap: metal_rough,
       normalMap: metal_nor,
       aoMap: metal_ao,
+      // displacementMap: metal_disp,
+
+      // displacementScale: 20,
       roughness: 0.3,
       metalness: 0.95,
+      normalScale: new THREE.Vector2(2.5, 2.5),
+
       color: 0xffffff,
     });
 
     const rubberAlbedo = textureLoader.load(
-      "/balls/Rubber/baseball_playground_diff_2k.jpg",
+      "/balls/Rubber/rubberized_track_diff_1k.jpg",
     );
+    rubberAlbedo.colorSpace = THREE.SRGBColorSpace;
     const rubber_arm = textureLoader.load(
-      "/balls/Rubber/baseball_playground_arm_2k.jpg",
+      "/balls/Rubber/rubberized_track_arm_1k.jpg",
     );
+    rubber_arm.colorSpace = THREE.NoColorSpace;
     const rubberDisp = textureLoader.load(
-      "/balls/Rubber/baseball_playground_disp_2k.png",
+      "/balls/Rubber/rubberized_track_disp_1k.png",
     );
+    rubberDisp.colorSpace = THREE.NoColorSpace;
     const rubberNor = textureLoader.load(
-      "/balls/Rubber/baseball_playground_nor_gl_2k.jpg",
+      "/balls/Rubber/rubberized_track_nor_gl_1k.png",
     );
+    rubberNor.colorSpace = THREE.NoColorSpace;
     this.materials.rubber = new THREE.MeshStandardMaterial({
       map: rubberAlbedo,
-      displacementMap: rubberDisp,
-      displacementScale: 0.01,
+      // displacementMap: rubberDisp,
       aoMap: rubber_arm,
       normalMap: rubberNor,
+      
+      // displacementScale: 0.01,
       roughness: 0.9,
       metalness: 0.05,
-      color: 0xcccccc,
+      normalScale: new THREE.Vector2(2.5, 2.5),
+
+      color: 0xffffff,
     });
 
     const wood_diff = textureLoader.load(
-      "/balls/Wood/rosewood_veneer1_diff_2k.jpg",
+      "/balls/Wood/herringbone_parquet_diff_1k.jpg",
     );
+    wood_diff.colorSpace = THREE.SRGBColorSpace;
     const wood_arm = textureLoader.load(
-      "/balls/Wood/rosewood_veneer1_arm_2k.jpg",
+      "/balls/Wood/herringbone_parquet_arm_1k.jpg",
     );
+    wood_arm.colorSpace = THREE.NoColorSpace;
     const wood_disp = textureLoader.load(
-      "/balls/Wood/wood_cabinet_worn_long_disp_2k.png",
+      "/balls/Wood/herringbone_parquet_disp_1k.png",
     );
+    wood_disp.colorSpace = THREE.NoColorSpace;
     const wood_nor = textureLoader.load(
-      "/balls/Wood/wood_cabinet_worn_long_nor_dx_2k.jpg",
+      "/balls/Wood/herringbone_parquet_nor_gl_1k.png",
     );
+    wood_nor.colorSpace = THREE.NoColorSpace;
     this.materials.wood = new THREE.MeshStandardMaterial({
       map: wood_diff,
       aoMap: wood_arm,
       normalMap: wood_nor,
-      displacementMap: wood_disp,
-      displacementScale: 0.01,
-      roughness: 0.7,
-      metalness: 0.02,
-      color: 0xffffff,
+      // displacementMap: wood_disp,
+      
+      // displacementScale: 0.01,
+      roughness: 0.8,
+      metalness: 0.1,
+      normalScale: new THREE.Vector2(5, 5),
+
+      // color: 0x5b3115,
     });
 
     const geometry = new THREE.SphereGeometry(this.radius, 128, 128);
@@ -144,6 +172,9 @@ export class Ball {
     });
 
     this.mesh = new THREE.Mesh(geometry, material);
+
+    this.mesh.castShadow = true;
+    this.mesh.receiveShadow = true;
 
     this.ropeSegments = 15;
     this.ropeNodeMass = 0.01;
@@ -268,6 +299,8 @@ export class Ball {
     if (this.trailPoints.length > this.maxTrail) {
       this.trailPoints.shift();
     }
+
+    this.mesh.rotation.z = this.theta;
   
     updateTrail(this);
   }

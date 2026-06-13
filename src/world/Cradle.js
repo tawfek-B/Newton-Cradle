@@ -55,6 +55,11 @@ export function createCradleArm() {
     });
 
     material.side = THREE.DoubleSide;
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+
   
-    return new THREE.Mesh(geometry, material);
+    return mesh;
   }

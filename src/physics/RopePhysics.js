@@ -24,7 +24,7 @@ function stepSingleRope(rope, dt, gravity, outForce) {
     const endpoint = rope.getTargetEndpoint();
     const links = nodes.length + 1;
     const segRest = Math.max(rope.restLength / links, 1e-4);
-    const maxExt = segRest * 0.1;
+    const maxExt = segRest * 0.18;
     const extEps = segRest * 0.02;
 
     for (let i = 0; i < nodes.length; i++) {
@@ -48,7 +48,7 @@ function stepSingleRope(rope, dt, gravity, outForce) {
             );
             
             nextV = ball.vel.clone()
-                .add(tangentialVel.multiplyScalar(0));
+                .add(tangentialVel.multiplyScalar(0.7));
         } else {
             nextV = vels[i + 1];
         }
@@ -75,7 +75,7 @@ function stepSingleRope(rope, dt, gravity, outForce) {
         const fPrev = nPrev.clone().multiplyScalar(-rope.stiffness * extPrev + dampPrev);
         const fNext = nNext.clone().multiplyScalar(rope.stiffness * extNext + dampNext);
         const fGravity = gravity.clone().multiplyScalar(rope.nodeMass);
-        const fAir = v.clone().multiplyScalar(-rope.airDrag);
+        const fAir = v.clone().multiplyScalar(-rope.airDrag * 1.5);
 
         const fTotal = fPrev.add(fNext).add(fGravity).add(fAir);
         const a = fTotal.multiplyScalar(1 / Math.max(rope.nodeMass, 1e-6));

@@ -135,10 +135,10 @@ export class CradleSystem {
                     }
                 }
 
-                for (const ball of this.balls) {
-                    if (ball.ropeA) ball.ropeA.enforceConstraints();
-                    if (ball.ropeB) ball.ropeB.enforceConstraints();
-                }
+                // for (const ball of this.balls) {
+                //     if (ball.ropeA) ball.ropeA.enforceConstraints();
+                //     if (ball.ropeB) ball.ropeB.enforceConstraints();
+                // }
                 if (!anyCollision) break;
             }
         }
@@ -170,7 +170,8 @@ export class CradleSystem {
         }
     }
 
-    resetToAngle(angleDeg) {
+
+    resetToAngle(angleDeg, numBallsToMove) {
         if (!this.balls || this.balls.length === 0) return;
 
         const angleRad = degToRad(angleDeg);
@@ -180,7 +181,7 @@ export class CradleSystem {
 
             const isActive = (
                 angleDeg > 0
-                    ? i === this.balls.length - 1
+                    ? i >= this.balls.length - numBallsToMove
                     : i === 0
             );
 
