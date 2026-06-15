@@ -3,6 +3,7 @@ import { DEBUG, MATERIALS } from '../core/Constants.js';
 import { Rope } from './Rope.js';
 import { updateTrail } from '../rendering/TrailRenderer.js';
 import { updateBallMass } from '../main.js';
+import { payload } from '../payload.json';
 
 function isFiniteVec3(v) {
   return Number.isFinite(v.x)
@@ -213,11 +214,10 @@ export class Ball {
     this.trailLine = new THREE.Line(this.trailGeometry, this.trailMaterial);
   }
 
-  updateMass() {
+  updateMass(payload, ball) {
     const volume =
       (4 / 3) * Math.PI * Math.pow(this.radius, 3);
-
-    this.mass =
+    payload.debug ? this.mass = payload.balls[ball].mass : this.mass =
       MATERIALS[this.currentMaterialType.toUpperCase()].density *
       volume;
 
@@ -227,11 +227,12 @@ export class Ball {
     updateBallMass(this.mass);
   }
 
-  setPhysicalMaterial(physicalMat) {
+  setPhysicalMaterial(physicalMat, payload, ball) {
     this.restitution = physicalMat.restitution;
     this.friction = physicalMat.friction;
     this.damping = physicalMat.damping;
-    this.updateMass();
+    
+    this.updateMass(payload, ball);
   }
 
   getSurfaceAttachA() {
@@ -246,19 +247,19 @@ export class Ball {
     return this.pos.clone().add(rotated);
   }
 
-  setMaterialType(type) {
+  setMaterialType(type, payload, ball) {
     if (type === "metal" && this.materials.metal) {
       this.mesh.material = this.materials.metal;
       this.currentMaterialType = "metal";
-      this.setPhysicalMaterial(MATERIALS.METAL);
+      this.setPhysicalMaterial(MATERIALS.METAL, payload, ball);
     } else if (type === "rubber" && this.materials.rubber) {
       this.mesh.material = this.materials.rubber;
       this.currentMaterialType = "rubber";
-      this.setPhysicalMaterial(MATERIALS.RUBBER);
+      this.setPhysicalMaterial(MATERIALS.RUBBER, payload, ball);
     } else if (type === "wood" && this.materials.wood) {
       this.mesh.material = this.materials.wood;
       this.currentMaterialType = "wood";
-      this.setPhysicalMaterial(MATERIALS.WOOD);
+      this.setPhysicalMaterial(MATERIALS.WOOD, payload, ball);
     }
   }
 

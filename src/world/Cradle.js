@@ -5,7 +5,7 @@ export function createCradleArm() {
   
     path.add(
       new THREE.LineCurve3(
-        new THREE.Vector3(-2, -1, 0),
+        new THREE.Vector3(-2, -0.75, 0),
         new THREE.Vector3(-2, 1.6, 0)
       )
     );
@@ -36,7 +36,7 @@ export function createCradleArm() {
     path.add(
       new THREE.LineCurve3(
         new THREE.Vector3(2, 1.6, 0),
-        new THREE.Vector3(2, -1, 0)
+        new THREE.Vector3(2, -0.75, 0)
       )
     );
   
@@ -60,6 +60,26 @@ export function createCradleArm() {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
 
+    const standMaterial = new THREE.MeshStandardMaterial({
+      color: 0x303030,
+      metalness: 1,
+      roughness: 0.2,
+      side: THREE.DoubleSide,
+    });
+
+    const standGeo = new THREE.BoxGeometry(5.5, 0.25, 1, 16, 16, 16);
+
+    const stand = new THREE.Mesh(standGeo, standMaterial);
+
+    stand.position.y = -0.75;
+
+    stand.castShadow = true;
+    stand.receiveShadow = true;
+
+    const group = new THREE.Group();
   
-    return mesh;
+    group.add(mesh);
+    group.add(stand);
+
+    return group
   }

@@ -22,8 +22,8 @@ function createBox(color) {
   
     const items = [
       ["acc", "red", "Total Acceleration (m/s²)"],
-      ["tan", "yellow", "Tangential (m/s²)"],
-      ["cen", "purple", "Centripetal (m/s²)"],
+      ["tan", "yellow", "Tangential Acceleration (m/s²)"],
+      ["cen", "purple", "Centripetal Acceleration (m/s²)"],
       ["vel", "green", "Velocity (m/s)"],
       ["omega", "maroon", "Angular Velocity (rad/s)"],
       ["alpha", "orange", "Angular Acceleration (rad/s²)"],

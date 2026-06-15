@@ -2,6 +2,8 @@ import GUI from 'lil-gui';
 import { PHYSICS } from '../core/Constants.js';
 import { parameter } from 'three/tsl';
 import { balls } from '../main.js'
+import { payload } from '../payload.json'
+import { handlePlanetChange } from '../world/World.js';
 
 export function createGUI(params, settings, onApplyAngle, numBalls) {
   const gui = new GUI();
@@ -30,10 +32,15 @@ export function createGUI(params, settings, onApplyAngle, numBalls) {
   gui.add({ apply: () => onApplyAngle(spinController.getValue()) }, 'apply').name('Apply Angle');
 
 
-  gui.add(params, 'elasticity', 0, 1, 0.01).name('Elasticity (e)');
+  const elasticity = gui.add(params, 'elasticity', 0, 1, 0.01).name('Elasticity (e)');
+  payload.debug ? elasticity.disable() : null;
+  
+  const mass = gui.add(params, 'mass', 1, 350, 1);
+  payload.debug ? mass.disable() : null;
 
-  gui.add(params, 'mass', 1, 350, 1);
-  gui.add(params, 'length', 0.5, 2);
+  const length = gui.add(params, 'length', 0.5, 2);
+  payload.debug ? length.disable() : null;
+
   gui.add(params, 'damping', -1, 1);
   gui.add(params, 'gravity', -PHYSICS.GRAVITY * 2, PHYSICS.GRAVITY * 2);
 
@@ -75,8 +82,11 @@ export function createGUI(params, settings, onApplyAngle, numBalls) {
 
   gui.add(params, 'planet', planets).name('Planet/Location').setValue('EARTH').onChange(value => {
     if (params.onPlanetChange) {
-      console.log("PLANET CHANGED");
+
+      
       params.onPlanetChange(value);
+      handlePlanetChange(value)
+      console.log("PLANET CHANGED");
     }
   });
 
@@ -106,6 +116,7 @@ export function createGUI(params, settings, onApplyAngle, numBalls) {
       vectorControllers.forEach((controller) => controller.updateDisplay());
       syncMasterToggle();
     });
+
 
   const vectorControllers = [
     folder.add(settings, 'velocity').onChange(syncMasterToggle),

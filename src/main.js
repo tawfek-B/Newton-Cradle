@@ -5,7 +5,7 @@ import { Time } from './core/Time.js';
 import { CRADLE, PHYSICS } from './core/Constants.js';
 
 import { OrbitControls } from 'three/examples/jsm/Addons.js';
-import { scene, camera, renderer } from './world/World.js';
+import { scene, camera, renderer, planets } from './world/World.js';
 
 import { SoundManager } from './audio/SoundManager.js';
 import { createGUI } from './ui/UI.js';
@@ -17,11 +17,17 @@ import {
   updateVectors
 } from './rendering/VectorRenderer.js';
 
+import { check } from './utils/payloadChecker.js'
+
+import { payload } from './payload.json';
+
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-const NUM_BALLS = CRADLE.NUM_BALLS;
+const NUM_BALLS = payload.debug ? payload.numberOfBalls : CRADLE.NUM_BALLS;
 const SPACING = CRADLE.BALL_SPACING;
+
+let mainPayload = payload;
 
 export const balls = [];
 
@@ -32,7 +38,7 @@ for (let i = 0; i < NUM_BALLS; i++) {
   balls.push(ball);
 }
 
-balls.forEach(ball => {
+balls.forEach((ball, index) => {
   initVectorRendering(ball);
   addVectorsToScene(scene, ball);
 });
@@ -51,15 +57,15 @@ const time = new Time();
 let _prevLength = null;
 
 const settings = {
-  velocity: true,
-  acceleration: true,
-  tension: true,
-  centripetal: true,
-  tangential: true,
-  angular_velocity: true,
-  angular_acceleration: true,
-  weight: true,
-  trail: true
+  velocity: false,
+  acceleration: false,
+  tension: false,
+  centripetal: false,
+  tangential: false,
+  angular_velocity: false,
+  angular_acceleration: false,
+  weight: false,
+  trail: false
 };
 
 const params = {
@@ -104,6 +110,10 @@ function handleMaterialChange(type) {
   }
 }
 
+function handleBallMaterialChange(type, ballIndex) {
+  balls[ballIndex].setMaterialType(type, mainPayload, ballIndex);
+}
+
 
 export function updateBallMass(newMass) {
   params.mass = newMass;
@@ -115,18 +125,25 @@ params.onPlanetChange = handlePlanetChange;
 params.elasticity = balls[0].restitution;
 
 function setAngle(spin = 0) {
-  console.log(spin);
   const oldLength = balls.length;
   cradle.resetToAngle(params.angle, params.numBallsToMove, params.numberOfBalls, scene);
-  
-  if(oldLength !== balls.length)
+
+  if (oldLength !== balls.length)
     balls = cradle.balls;
 
   balls.forEach((ball, index) => {
-    if (index === 4)
-      ball.spinOmega = spin;
-    else
-      ball.spinOmega = 0;
+    if (!mainPayload.debug)
+      if (index === 4)
+        ball.spinOmega = spin;
+      else
+        ball.spinOmega = 0;
+    else {
+      ball.spinOmega = mainPayload.balls[index].spinOmega
+      console.log(ball.spinOmega)
+    }
+
+    console.log(ball.spinOmega)
+
     ball.spinAngle = 0;
     if (ball.ropeA) ball.ropeA.twistAngle = 0;
     if (ball.ropeB) ball.ropeB.twistAngle = 0;
@@ -140,6 +157,17 @@ function setAngle(spin = 0) {
 
 const gui = createGUI(params, settings, setAngle, NUM_BALLS);
 const hudElements = createHUD();
+
+mainPayload = check()
+if (mainPayload.debug)
+  for (let i = 0; i < mainPayload.numberOfBalls; i++) {
+    const key = `${i}`;
+
+    handleBallMaterialChange(mainPayload.balls[key].material, i);
+
+    // balls[i].ropeA.setLength(payload.balls[key].ropeA);
+    // balls[i].ropeB.setLength(payload.balls[key].ropeB)
+  }
 
 let massController = null;
 let elasticityController = null;
@@ -189,11 +217,11 @@ function handlePlanetChange(planet) {
     gravityController.updateDisplay();
   }
 }
-// Apply initial elasticity override
-cradle.setMaterialType(params.materialType);
+// Apply initial elasticity override, if we have debug disabled
+mainPayload.debug ? null : cradle.setMaterialType(params.materialType);
 
 // Apply initial elasticity
-cradle.setElasticity(params.elasticity);
+mainPayload.debug ? balls.forEach((ball, i) => { ball.restitution = mainPayload.balls[`${i}`].elasticity; }) : cradle.setElasticity(params.elasticity);
 
 function initAudio() {
   SoundManager.getInstance().initialize();
@@ -217,17 +245,25 @@ window.addEventListener('touchstart', initAudio);
 function animate() {
   requestAnimationFrame(animate);
 
-  for (const ball of balls) {
-    ball.length = params.length;
-  }
+  if (!mainPayload.debug)
+    for (const ball of balls) {
+      //  this fixed the rope slack issue
+      ball.length = params.length + 0.15;
+    }
 
   if (_prevLength === null || Math.abs(_prevLength - params.length) > 1e-6) {
-    cradle.setLength(params.length);
+    if (!mainPayload.debug)
+      cradle.setLength(params.length);
+    else {
+      balls.forEach((ball, index) => {
+        cradle.setBallLength(mainPayload.balls[index].rope, ball)
+      });
+    }
     _prevLength = params.length;
   }
 
-  cradle.updateMasses(params.mass);
-  cradle.setElasticity(params.elasticity);
+  mainPayload.debug ? null : cradle.updateMasses(params.mass);
+  mainPayload.debug ? null : cradle.setElasticity(params.elasticity);
 
   for (const ball of balls) {
     if (ball.ropeA) ball.ropeA.damping = params.ropeDamping;
@@ -242,7 +278,7 @@ function animate() {
     ball.trailLine.visible = settings.trail;
   }
 
-  const dt = time.update(params.time_pace) * 2.25;
+  const dt = time.update(params.time_pace * 2.25);
 
   // Zero spinTorque before physics iteration — it will be accumulated
   // by stepSingleRope during cradle.update()
@@ -321,7 +357,7 @@ function animate() {
   const vels = balls.map(ball => ball.vel.length());
   const omegas = balls.map(ball => ball.omegaVec.length());
   const alphas = balls.map(ball => ball.alphaVec.length());
-  const tens = balls.map(ball => (ball.tensionA.length() + ball.tensionB.length())/2);
+  const tens = balls.map(ball => (ball.tensionA.length() + ball.tensionB.length()) / 2);
   const weights = balls.map(ball => Math.abs(params.gravity) * ball.mass);
 
   //add all values to HUD for the all balls (can be extended to show multiple balls later if desired)

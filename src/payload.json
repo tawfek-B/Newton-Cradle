@@ -1,0 +1,43 @@
+{
+    "payload": {
+        "debug": false,
+        "numberOfBalls": 7,
+        "balls": {
+            "0": {
+                "material": "wood",
+                "mass": 250,
+                "elasticity": 0.9,
+                "spinOmega": 20,
+                "rope": 1.0
+            },
+            "1": {
+                "material": "rubber",
+                "mass": 250,
+                "elasticity": 0.9,
+                "spinOmega": 20,
+                "rope": 1.0
+            },
+            "2": {
+                "material": "metal",
+                "mass": 250,
+                "elasticity": 0.9,
+                "spinOmega": 20,
+                "rope": 1.05
+            },
+            "3": {
+                "material": "wood",
+                "mass": 250,
+                "elasticity": 0.9,
+                "spinOmega": 20,
+                "rope": 1.0
+            },
+            "4": {
+                "material": "rubber",
+                "mass": 250,
+                "elasticity": 0.9,
+                "spinOmega": 20,
+                "rope": 1.0
+            }
+        }
+    }
+}

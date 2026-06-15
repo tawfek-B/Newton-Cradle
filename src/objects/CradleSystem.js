@@ -218,10 +218,11 @@ export class CradleSystem {
     }
 
     setMaterialType(type) {
-        for (const ball of this.balls) {
+        this.balls.forEach((ball, index) => {
             if (ball.setMaterialType) {
-                ball.setMaterialType(type);
+                ball.setMaterialType(type, index);
             }
+        }); {
         }
     }
 
@@ -239,7 +240,7 @@ export class CradleSystem {
 
     setLength(length) {
         for (const ball of this.balls) {
-            ball.length = length;
+            ball.length = length + 0.2;
 
             if (ball.ropeA && ball.ropeA.setLength) {
                 ball.ropeA.setLength(length);
@@ -248,5 +249,16 @@ export class CradleSystem {
                 ball.ropeB.setLength(length);
             }
         }
+    }
+    setBallLength(length, ball) {
+        ball.length = length + 0.2;
+
+        if (ball.ropeA && ball.ropeA.setLength) {
+            ball.ropeA.setLength(length);
+        }
+        if (ball.ropeB && ball.ropeB.setLength) {
+            ball.ropeB.setLength(length);
+        }
+
     }
 }
