@@ -123,6 +123,7 @@ function separateBalls(ball1, ball2) {
 }
 
 export function computeHertzianForce(ball1, ball2) {
+
     const dist = ball1.pos.distanceTo(ball2.pos);
     const overlap = ball1.radius + ball2.radius - dist;
 
@@ -130,23 +131,43 @@ export function computeHertzianForce(ball1, ball2) {
         return new THREE.Vector3();
     }
 
-    const R_eff = (ball1.radius * ball2.radius)
-        / (ball1.radius + ball2.radius);
-
-    const k_h = COLLISION.HERTZ_STIFFNESS;
-
-    const forceMag = k_h * Math.pow(overlap, 1.5);
-
     const n = getCollisionNormal(ball1, ball2);
-    const vRel = ball1.vel.clone()
-        .sub(ball2.vel)
-        .dot(n);
 
-    const dampingForce = COLLISION.HERTZ_DAMPING * Math.max(0, -vRel) * overlap;
+    // Effective radius (Hertz contact)
+    const R_eff =
+        (ball1.radius * ball2.radius) /
+        (ball1.radius + ball2.radius);
 
-    const totalForceMag = forceMag + dampingForce;
+    // Hertz stiffness
+    const k_h =
+        COLLISION.HERTZ_STIFFNESS *
+        Math.sqrt(Math.max(R_eff, 1e-10));
 
-    const forceVec = n.clone().multiplyScalar(totalForceMag);
+    // Hertz elastic force
+    const elasticForce =
+        k_h *
+        Math.pow(overlap, 1.5);
 
-    return forceVec;
+    // Relative velocity along collision normal
+    const vRel =
+        ball1.vel.clone()
+            .sub(ball2.vel)
+            .dot(n);
+
+    // δ̇ = -vRel
+    const deltaDot = -vRel;
+
+    // Damping only while compressing
+    const dampingForce =
+        deltaDot > 0
+            ? COLLISION.HERTZ_DAMPING *
+            deltaDot *
+            Math.sqrt(overlap)
+            : 0;
+
+    const totalForce =
+        elasticForce +
+        dampingForce;
+
+    return n.clone().multiplyScalar(totalForce);
 }

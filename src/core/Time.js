@@ -10,7 +10,6 @@ export class Time {
       this.dt = (now - this.last) / (1000 / timePace);
       this.last = now;
   
-      this.dt = Math.min(this.dt, 0.016);
       this.elapsed += this.dt;
   
       return this.dt;

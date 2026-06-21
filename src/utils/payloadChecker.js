@@ -1,8 +1,11 @@
 import { payload } from '../payload.json'
 
-const num = payload.numberOfBalls
+let num = payload.numberOfBalls
 
 export function check() {
+
+    if (payload.numberOfBalls < 1 || payload.numberOfBalls > 10)
+        num = 10;
 
     const jsonObject = payload;
 
@@ -14,9 +17,9 @@ export function check() {
             "mass": 261.38,
             "elasticity": 0.96,
             "spinOmega": 20,
-            "rope": 1
+            "rope": 1,
         };
-        
+
         jsonObject.balls[objectLength] = newBall;
         jsonObject.numberOfBalls = Object.keys(jsonObject.balls).length;
 

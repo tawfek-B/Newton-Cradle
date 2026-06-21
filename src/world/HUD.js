@@ -30,6 +30,12 @@ function createBox(color) {
 
       ["ten", "blue", "Tension (N)"],
       ["weight", "cyan", "Weight (N)"],
+
+      ["momentum", "lime", "Momentum (kg.m/s)"],
+
+      ["Penergy", null, "Potential Energy (J)"],
+      ["Kenergy", null, "Kinetic Energy (J)"],
+      ["Energy", null, "Total Energy (J)"],
     ];
   
     const elements = {};

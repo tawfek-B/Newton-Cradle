@@ -62,7 +62,7 @@ export function createCradleArm() {
 
     const standMaterial = new THREE.MeshStandardMaterial({
       color: 0x303030,
-      metalness: 1,
+      metalness: 0.7,
       roughness: 0.2,
       side: THREE.DoubleSide,
     });

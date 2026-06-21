@@ -32,46 +32,31 @@ function createTextSprite(text) {
 }
 
 import { updateLabel } from './LabelRenderer.js';
+import { momentum } from '../utils/PhysicsUtils.js';
 
 export function initVectorRendering(ball) {
   ball.vectorMagnifier = 0.1;
 
-  ball.velLine = new THREE.Line(
-    new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: 0x00ff00 })
-  );
-  ball.accLine = new THREE.Line(
-    new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: 0xff0000 })
-  );
-  ball.weightLine = new THREE.Line(
-    new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: 0x7df9ff })
-  );
-  ball.tanLine = new THREE.Line(
-    new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: 0xffff00 })
-  );
-  ball.tensionLineA = new THREE.Line(
-    new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: 0x1453fe })
-  );
-  ball.tensionLineB = new THREE.Line(
-    new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: 0x1453fe })
-  );
-  ball.cenLine = new THREE.Line(
-    new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: 0x800080 })
-  );
-  ball.omegaVecLine = new THREE.Line(
-    new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: 0x800000 })
-  );
-  ball.alphaVecLine = new THREE.Line(
-    new THREE.BufferGeometry(),
-    new THREE.LineBasicMaterial({ color: 0xff8800 })
-  );
+  const makeArrow = (color) =>
+    new THREE.ArrowHelper(
+      new THREE.Vector3(0, 1, 0),
+      new THREE.Vector3(0, 0, 0),
+      0,
+      color,
+      1,
+      1
+    );
+
+  ball.velLine = makeArrow(0x00ff00);
+  ball.accLine = makeArrow(0xff0000);
+  ball.weightLine = makeArrow(0x7df9ff);
+  ball.momentumLine = makeArrow(0x89f336);
+  ball.tanLine = makeArrow(0xffff00);
+  ball.tensionLineA = makeArrow(0x1453fe);
+  ball.tensionLineB = makeArrow(0x1453fe);
+  ball.cenLine = makeArrow(0x800080);
+  ball.omegaVecLine = makeArrow(0x800000);
+  ball.alphaVecLine = makeArrow(0xff8800);
 
   const velLabel = createTextSprite('0');
   ball.velLabel = velLabel.sprite;
@@ -84,6 +69,10 @@ export function initVectorRendering(ball) {
   const weightLabel = createTextSprite('0');
   ball.weightLabel = weightLabel.sprite;
   ball.weightLabelData = weightLabel;
+
+  const momentumLabel = createTextSprite('0');
+  ball.momentumLabel = momentumLabel.sprite;
+  ball.momentumLabelData = momentumLabel;
 
   const tanLabel = createTextSprite('0');
   ball.tanLabel = tanLabel.sprite;
@@ -114,6 +103,7 @@ export function addVectorsToScene(scene, ball) {
   scene.add(ball.velLine);
   scene.add(ball.accLine);
   scene.add(ball.weightLine);
+  scene.add(ball.momentumLine);
   scene.add(ball.tanLine);
   scene.add(ball.tensionLineA);
   scene.add(ball.tensionLineB);
@@ -124,6 +114,7 @@ export function addVectorsToScene(scene, ball) {
   scene.add(ball.velLabel);
   scene.add(ball.accLabel);
   scene.add(ball.weightLabel);
+  scene.add(ball.momentumLabel);
   scene.add(ball.tanLabel);
   scene.add(ball.tensionALabel);
   scene.add(ball.tensionBLabel);
@@ -158,66 +149,74 @@ export function setVectorVisibility(ball, settings) {
 
   ball.weightLine.visible = settings.weight;
   ball.weightLabel.visible = settings.weight;
+
+  ball.momentumLine.visible = settings.momentum;
+  ball.momentumLabel.visible = settings.momentum;
 }
 
 export function updateVectors(ball, mag, gravity = PHYSICS.GRAVITY) {
   const s = mag;
 
-  ball.velLine.geometry.setFromPoints([
-    ball.pos,
-    ball.pos.clone().add(ball.vel.clone().multiplyScalar(s))
-  ]);
-
-  ball.accLine.geometry.setFromPoints([
-    ball.pos,
-    ball.pos.clone().add(ball.acc.clone().multiplyScalar(s))
-  ]);
-
-  ball.weightLine.geometry.setFromPoints([
-    ball.pos,
-    ball.pos.clone().add(new THREE.Vector3(0, -gravity * ball.mass, 0).multiplyScalar(s/75))
-  ]);
-
   const tan = ball.acc_tangential || new THREE.Vector3();
-  ball.tanLine.geometry.setFromPoints([
-    ball.pos,
-    ball.pos.clone().add(tan.clone().multiplyScalar(s))
-  ]);
-
   const tA = ball.tensionA || new THREE.Vector3();
   const tB = ball.tensionB || new THREE.Vector3();
-  ball.tensionLineA.geometry.setFromPoints([ball.pos, ball.pos.clone().add(tA.clone().multiplyScalar(s/75))]);
-  ball.tensionLineB.geometry.setFromPoints([ball.pos, ball.pos.clone().add(tB.clone().multiplyScalar(s/75))]);
-
   const c = ball.acc_centripetal || new THREE.Vector3();
-  ball.cenLine.geometry.setFromPoints([
-    ball.pos,
-    ball.pos.clone().add(c.clone().multiplyScalar(s))
-  ]);
-
   const w = ball.omegaVec || new THREE.Vector3();
-  ball.omegaVecLine.geometry.setFromPoints([ball.pos, ball.pos.clone().add(w.clone().multiplyScalar(s))]);
-
   const a = ball.alphaVec || new THREE.Vector3();
-  ball.alphaVecLine.geometry.setFromPoints([ball.pos, ball.pos.clone().add(a.clone().multiplyScalar(s))]);
+
+  const scaledMomentum = ball.vel.clone().multiplyScalar(ball.mass / 75);
+  const scaledVel = ball.vel.clone().multiplyScalar(s);
+  const scaledAcc = ball.acc.clone().multiplyScalar(s);
+  const scaledWeight = new THREE.Vector3(0, -gravity * ball.mass, 0).multiplyScalar(s / 75);
+  const scaledTan = tan.clone().multiplyScalar(s);
+  const scaledTA = tA.clone().multiplyScalar(s / 75);
+  const scaledTB = tB.clone().multiplyScalar(s / 75);
+  const scaledC = c.clone().multiplyScalar(s);
+  const scaledW = w.clone().multiplyScalar(s);
+  const scaledA = a.clone().multiplyScalar(s);
+
+  const setArrow = (arrow, vector) => {
+    arrow.position.copy(ball.pos);
+
+    if (vector.lengthSq() > 1e-12) {
+      arrow.setDirection(vector.clone().normalize());
+      arrow.setLength(vector.length());
+    } else {
+      arrow.setDirection(new THREE.Vector3(0, 1, 0));
+      arrow.setLength(0);
+    }
+  };
+
+  setArrow(ball.momentumLine, scaledMomentum);
+  setArrow(ball.velLine, scaledVel);
+  setArrow(ball.accLine, scaledAcc);
+  setArrow(ball.weightLine, scaledWeight);
+  setArrow(ball.tanLine, scaledTan);
+  setArrow(ball.tensionLineA, scaledTA);
+  setArrow(ball.tensionLineB, scaledTB);
+  setArrow(ball.cenLine, scaledC);
+  setArrow(ball.omegaVecLine, scaledW);
+  setArrow(ball.alphaVecLine, scaledA);
 
   updateLabel(ball.velLabelData, ball.vel.length().toFixed(2) + ' m/s');
   updateLabel(ball.accLabelData, ball.acc.length().toFixed(2) + ' m/s²');
-  updateLabel(ball.weightLabelData, (Math.abs(gravity) * ball.mass).toFixed(2) + ' N');
   updateLabel(ball.tanLabelData, tan.length().toFixed(2) + ' m/s²');
   updateLabel(ball.tensionALabelData, tA.length().toFixed(2) + ' N');
   updateLabel(ball.tensionBLabelData, tB.length().toFixed(2) + ' N');
   updateLabel(ball.cenLabelData, c.length().toFixed(2) + ' m/s²');
   updateLabel(ball.angVelLabelData, w.length().toFixed(2) + ' rad/s');
   updateLabel(ball.angAccLabelData, a.length().toFixed(2) + ' rad/s²');
+  updateLabel(ball.weightLabelData, (Math.abs(gravity) * ball.mass).toFixed(2) + ' N');
+  updateLabel(ball.momentumLabelData, (ball.vel.length() * ball.mass).toFixed(2) + ' kg.m/s');
 
-  ball.velLabel.position.copy(ball.pos).add(ball.vel.clone().multiplyScalar(s));
-  ball.accLabel.position.copy(ball.pos).add(ball.acc.clone().multiplyScalar(s));
-  ball.weightLabel.position.copy(ball.pos).add(new THREE.Vector3(0, -gravity * ball.mass * (s/75), 0));
-  ball.tanLabel.position.copy(ball.pos).add(tan.clone().multiplyScalar(s));
-  ball.tensionALabel.position.copy(ball.pos).add(tA.clone().multiplyScalar(s/75));
-  ball.tensionBLabel.position.copy(ball.pos).add(tB.clone().multiplyScalar(s/75));
-  ball.cenLabel.position.copy(ball.pos).add(c.clone().multiplyScalar(s));
-  ball.angVelLabel.position.copy(ball.pos).add(w.clone().multiplyScalar(s));
-  ball.angAccLabel.position.copy(ball.pos).add(a.clone().multiplyScalar(s));
+  ball.velLabel.position.copy(ball.pos).add(scaledVel);
+  ball.accLabel.position.copy(ball.pos).add(scaledAcc);
+  ball.tanLabel.position.copy(ball.pos).add(scaledTan);
+  ball.tensionALabel.position.copy(ball.pos).add(scaledTA);
+  ball.tensionBLabel.position.copy(ball.pos).add(scaledTB);
+  ball.cenLabel.position.copy(ball.pos).add(scaledC);
+  ball.angVelLabel.position.copy(ball.pos).add(scaledW);
+  ball.angAccLabel.position.copy(ball.pos).add(scaledA);
+  ball.weightLabel.position.copy(ball.pos).add(scaledWeight);
+  ball.momentumLabel.position.copy(ball.pos).add(scaledMomentum);
 }

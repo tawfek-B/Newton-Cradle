@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { PHYSICS } from '../core/Constants';
 
 function isFiniteVec3(v) {
     return Number.isFinite(v.x) && Number.isFinite(v.y) && Number.isFinite(v.z);
@@ -7,10 +8,10 @@ function isFiniteVec3(v) {
 export class Rope {
     constructor({
         anchor, ball, attachSide,
-        segments = 12,           // more nodes = smoother rope
-        nodeMass = 0.015,        // increased
-        stiffness = 650,         // much lower but still responsive
-        damping = 18,            // increased
+        segments = 12,
+        nodeMass = 0.015,
+        stiffness = 650,
+        damping = 18,
         airDrag = 0.012
     }) {
         this.anchor = anchor;
@@ -27,8 +28,14 @@ export class Rope {
         this.restLength = 1;
         this.twistAngle = 0;
         this.twistOmega = 0;
-        this.torsionK = 25;
+        // this.torsionK = 25;
         this.torsionDamping = 3;
+
+        const radius = 0.0005
+
+        const J = Math.PI * Math.pow(radius, 4) / 2
+
+        this.torsionK = (PHYSICS.SHEAR_MODULUS * J) / this.restLength;
 
         this.line = new THREE.Line(
             new THREE.BufferGeometry(),
@@ -43,8 +50,16 @@ export class Rope {
 
     getTargetEndpoint(spinAngleOverride) {
         const spinAngle = spinAngleOverride !== undefined ? spinAngleOverride : this.ball.spinAngle;
-        const localAttach = this.attachSide === 'A' ? this.ball.localAttachA : this.ball.localAttachB;
-        const rotated = localAttach.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), spinAngle);
+
+        const localAttach = this.attachSide === 'A'
+            ? this.ball.localAttachA
+            : this.ball.localAttachB;
+
+        const quat = new THREE.Quaternion().setFromEuler(
+            new THREE.Euler(0, spinAngle, this.ball.theta)
+        );
+
+        const rotated = localAttach.clone().applyQuaternion(quat);
         return this.ball.pos.clone().add(rotated);
     }
 
@@ -107,7 +122,6 @@ export class Rope {
             return;
         }
 
-        // Safety reset
         const expectedSegLength = this.restLength / this.segments;
         let needsReset = false;
         for (let i = 0; i < this.nodes.length - 1; i++) {
@@ -127,21 +141,23 @@ export class Rope {
         const motion = speed * speed + omega * omega * 0.3; // further downweighted
 
         const thresholdLow = 0.001;
-        const thresholdHigh = 0.4;   // higher = stays blended longer → less snapping
+        const thresholdHigh = 0.4;
 
-        let blend = 0;
-        const distToRest = Math.abs(this.anchor.distanceTo(endpoint) - this.restLength);
-        if (motion < thresholdLow && distToRest < 0.02) {
-            blend = 0;
-        } else {
-            blend = Math.min(1, Math.max(0, (motion - thresholdLow) / (thresholdHigh - thresholdLow)));
-        }
+        let blend = Math.min(1, Math.max(0, (motion - thresholdLow) / (thresholdHigh - thresholdLow)));
+
+        // let blend = 0;
+        // const distToRest = Math.abs(this.anchor.distanceTo(endpoint) - this.restLength);
+        // if (motion < thresholdLow && distToRest < 0.02) {
+        //     blend = Math.min(1, Math.max(0, (motion - thresholdLow) / (thresholdHigh - thresholdLow)));
+        // } else {
+        //     blend = Math.min(1, Math.max(0, (motion - thresholdLow) / (thresholdHigh - thresholdLow)));
+        // }
 
         const allPoints = [this.anchor];
         const ropeAxis = endpoint.clone().sub(this.anchor).normalize();
 
-        const reference = Math.abs(ropeAxis.y) < 0.9 
-            ? new THREE.Vector3(0, 1, 0) 
+        const reference = Math.abs(ropeAxis.y) < 0.9
+            ? new THREE.Vector3(0, 1, 0)
             : new THREE.Vector3(1, 0, 0);
 
         const side = new THREE.Vector3().crossVectors(ropeAxis, reference).normalize();

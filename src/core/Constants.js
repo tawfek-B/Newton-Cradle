@@ -1,7 +1,21 @@
 export const PHYSICS = {
     GRAVITY: 9.81,
     GRAVITATIONAL_CONSTANT: 6.6743e-11,
-    AIR_DAMPING: 0.05,
+
+    EARTH_AIR_DAMPING: 0.05,
+    NEARTH_AIR_DAMPING: 0.05,
+    ISS_AIR_DAMPING: 0.05,
+    VENUS_AIR_DAMPING: 4.5,
+    MARS_AIR_DAMPING: 0.00035,
+    JUPITER_AIR_DAMPING: 0.0065,
+    SATURN_AIR_DAMPING: 0.0095,
+    URANUS_AIR_DAMPING: 0.021,
+    NEPTUNE_AIR_DAMPING: 0.0225,
+    STRATOSPHERE_AIR_DAMPING: 0.0005,
+    SUN_AIR_DAMPING: 5,
+
+    SHEAR_MODULUS: 79e+9,
+    
     FIXED_DT: 1 / 120,
     MAX_DT: 0.016,
     CONSTRAINT_ITERATIONS: 5,
@@ -63,13 +77,13 @@ export const MATERIALS = {
         damping: 0.01
     },
     RUBBER: {
-        restitution: 0.88,
+        restitution: 0.85,
         friction: 0.8,
         density: 1200,
         damping: 0.08
     },
     WOOD: {
-        restitution: 0.90,
+        restitution: 0.70,
         friction: 0.5,
         density: 700,
         damping: 0.04

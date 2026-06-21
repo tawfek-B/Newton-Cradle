@@ -6,11 +6,11 @@ const planetsConfig = [
     { name: 'SUN', texturePath: '/planets/2k_sun.jpg', radius: 150, },
     { name: 'MERCURY', texturePath: '/planets/2k_mercury.jpg', radius: 19, y: -300 },
     { name: 'VENUS', texturePath: '/planets/2k_venus.jpg', radius: 47, y: -800 },
-    { name: 'MARS', texturePath: '/planets/2k_mars.jpg', radius: 27, y:-420 },
-    { name: 'JUPITER', texturePath: '/planets/2k_jupiter.jpg', radius: 100, y:-1750 },  //for rendering sake, the radius was made unrealistically smaller
-    { name: 'SATURN', texturePath: '/planets/2k_saturn.jpg', radius: 100, y:-1750 },    //for rendering sake, the radius was made unrealistically smaller
-    { name: 'URANUS', texturePath: '/planets/2k_uranus.jpg', radius: 100, y:-1750 },    //for rendering sake, the radius was made unrealistically smaller
-    { name: 'NEPTUNE', texturePath: '/planets/2k_neptune.jpg', radius: 100, y:-1750 },          //for rendering sake, the radius was made unrealistically smaller
+    { name: 'MARS', texturePath: '/planets/2k_mars.jpg', radius: 27, y: -420 },
+    { name: 'JUPITER', texturePath: '/planets/2k_jupiter.jpg', radius: 100, y: -1750 },  //for rendering sake, the radius was made unrealistically smaller
+    { name: 'SATURN', texturePath: '/planets/2k_saturn.jpg', radius: 80, y: -1400 },    //for rendering sake, the radius was made unrealistically smaller
+    { name: 'URANUS', texturePath: '/planets/2k_uranus.jpg', radius: 100, y: -1750 },    //for rendering sake, the radius was made unrealistically smaller
+    { name: 'NEPTUNE', texturePath: '/planets/2k_neptune.jpg', radius: 100, y: -1750 },          //for rendering sake, the radius was made unrealistically smaller
     { name: 'PLUTO', texturePath: '/planets/2k_pluto.jpg', radius: 10, y: -180 },
     { name: 'MOON', texturePath: '/planets/2k_moon.jpg', radius: 14 },
     { name: 'STRATOSPHERE', texturePath: '/planets/2k_earth.jpg', radius: 50, y: -800 }
@@ -22,9 +22,8 @@ export const spaceTexture = textureLoader.load('/planets/space.png', (texture) =
 export const issTexture = textureLoader.load('/planets/iss.jpeg', (texture) => {
     texture.magFilter = THREE.EquirectangularReflectionMapping;
 });
-
+export let planetsTex = [];
 export async function initializePlanets() {
-    const planets = [];
 
     for (const config of planetsConfig) {
         try {
@@ -52,7 +51,7 @@ export async function initializePlanets() {
                 mesh.castShadow = false;
                 mesh.receiveShadow = false;
 
-                planets.push({
+                planetsTex.push({
                     name: config.name,
                     mesh: mesh,
                     texture: texture,
@@ -80,7 +79,33 @@ export async function initializePlanets() {
                 mesh.visible = false;
                 mesh.userData.name = config.name;
 
-                planets.push({
+                if (config.name === 'SATURN') {
+                    const saturnRingTexture = textureLoader.load('/planets/rings2.png', (texture) => {
+                        texture.colorSpace = THREE.SRGBColorSpace;
+                    });
+
+                    const planetRadius = config.radius * 15;
+                    const saturnRingInner = planetRadius * 1.35;
+                    const saturnRingOuter = planetRadius * 2.25;
+                    const saturnRingGeometry = new THREE.RingGeometry(saturnRingInner, saturnRingOuter, 256);
+
+                    mesh.rotation.z = -Math.PI / 8;
+
+                    const saturnRingMaterial = new THREE.MeshBasicMaterial({
+                        map: saturnRingTexture,
+                        side: THREE.DoubleSide,
+                        transparent: true,
+                        opacity: 0.9,
+                        depthWrite: false,
+                    });
+
+                    const saturnRing = new THREE.Mesh(saturnRingGeometry, saturnRingMaterial);
+                    saturnRing.position.set(0, 0, 0);
+                    saturnRing.rotation.x = Math.PI / 2;
+                    mesh.add(saturnRing);
+                }
+
+                planetsTex.push({
                     name: config.name,
                     mesh: mesh,
                     texture: texture,
@@ -88,11 +113,11 @@ export async function initializePlanets() {
                 });
 
             }
-            console.log(`${config.name} loaded`);
         } catch (error) {
             console.error(`Failed to load ${config.name}:`, error);
         }
     }
 
-    return planets;
+
+    return planetsTex;
 }

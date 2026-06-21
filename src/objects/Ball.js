@@ -2,14 +2,16 @@ import * as THREE from 'three';
 import { DEBUG, MATERIALS } from '../core/Constants.js';
 import { Rope } from './Rope.js';
 import { updateTrail } from '../rendering/TrailRenderer.js';
-import { updateBallMass } from '../main.js';
+import { updateBallMass } from '../core/SimulationState.js';
 import { payload } from '../payload.json';
+import { ballTextures } from '../utils/TextureLoader.js';
 
 function isFiniteVec3(v) {
   return Number.isFinite(v.x)
     && Number.isFinite(v.y)
     && Number.isFinite(v.z);
 }
+console.log('Ball.js loading');
 
 export class Ball {
   constructor(x = 0) {
@@ -26,6 +28,8 @@ export class Ball {
     this.spinTorque = 0;
 
     this.spinDamping = 0.05;
+    this.temperature = 0;
+    this.soundLevel = 0;
 
     this.momentOfInertia =
       (2 / 5) * this.mass * this.radius * this.radius;
@@ -63,39 +67,14 @@ export class Ball {
     };
 
     this.currentMaterialType = "metal";
-    const textureLoader = new THREE.TextureLoader();
-
-    const metalAlbedo = textureLoader.load(
-      "/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_BaseColor.jpg",
-    );
-    metalAlbedo.colorSpace = THREE.SRGBColorSpace;
-    const metalMetal = textureLoader.load(
-      "/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_Metallic.jpg",
-    );
-    metalMetal.colorSpace = THREE.NoColorSpace;
-    const metal_nor = textureLoader.load(
-      "/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_Normal.png",
-    );
-    metal_nor.colorSpace = THREE.NoColorSpace;
-    const metal_ao = textureLoader.load(
-      '/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_AmbientOcclusion.jpg',
-    );
-    metal_ao.colorSpace = THREE.NoColorSpace;
-    const metal_rough = textureLoader.load(
-      "/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_Roughness.jpg",
-    );
-    metal_rough.colorSpace = THREE.NoColorSpace;
-    const metal_disp = textureLoader.load(
-      "/balls/Metal/Poliigon_MetalGalvanizedZinc_7184_Displacement.jpg",
-    );
-    metal_disp.colorSpace = THREE.NoColorSpace;
+    
     this.materials.metal = new THREE.MeshStandardMaterial({
-      map: metalAlbedo,
-      metalnessMap: metalMetal,
-      roughnessMap: metal_rough,
-      normalMap: metal_nor,
-      aoMap: metal_ao,
-      // displacementMap: metal_disp,
+      map: ballTextures.metalAlbedo,
+      metalnessMap: ballTextures.metalMetal,
+      roughnessMap: ballTextures.metal_rough,
+      normalMap: ballTextures.metal_nor,
+      aoMap: ballTextures.metal_ao,
+      // displacementMap: ballTextures.metal_disp,
 
       // displacementScale: 20,
       roughness: 0.3,
@@ -105,57 +84,25 @@ export class Ball {
       color: 0xffffff,
     });
 
-    const rubberAlbedo = textureLoader.load(
-      "/balls/Rubber/rubberized_track_diff_1k.jpg",
-    );
-    rubberAlbedo.colorSpace = THREE.SRGBColorSpace;
-    const rubber_arm = textureLoader.load(
-      "/balls/Rubber/rubberized_track_arm_1k.jpg",
-    );
-    rubber_arm.colorSpace = THREE.NoColorSpace;
-    const rubberDisp = textureLoader.load(
-      "/balls/Rubber/rubberized_track_disp_1k.png",
-    );
-    rubberDisp.colorSpace = THREE.NoColorSpace;
-    const rubberNor = textureLoader.load(
-      "/balls/Rubber/rubberized_track_nor_gl_1k.png",
-    );
-    rubberNor.colorSpace = THREE.NoColorSpace;
     this.materials.rubber = new THREE.MeshStandardMaterial({
-      map: rubberAlbedo,
-      // displacementMap: rubberDisp,
-      aoMap: rubber_arm,
-      normalMap: rubberNor,
+      map: ballTextures.rubberAlbedo,
+      // displacementMap: ballTextures.rubberDisp,
+      aoMap: ballTextures.rubber_arm,
+      normalMap: ballTextures.rubberNor,
       
       // displacementScale: 0.01,
       roughness: 0.9,
       metalness: 0.05,
       normalScale: new THREE.Vector2(2.5, 2.5),
 
-      color: 0xffffff,
+      color: 0xf7ff12,
     });
 
-    const wood_diff = textureLoader.load(
-      "/balls/Wood/herringbone_parquet_diff_1k.jpg",
-    );
-    wood_diff.colorSpace = THREE.SRGBColorSpace;
-    const wood_arm = textureLoader.load(
-      "/balls/Wood/herringbone_parquet_arm_1k.jpg",
-    );
-    wood_arm.colorSpace = THREE.NoColorSpace;
-    const wood_disp = textureLoader.load(
-      "/balls/Wood/herringbone_parquet_disp_1k.png",
-    );
-    wood_disp.colorSpace = THREE.NoColorSpace;
-    const wood_nor = textureLoader.load(
-      "/balls/Wood/herringbone_parquet_nor_gl_1k.png",
-    );
-    wood_nor.colorSpace = THREE.NoColorSpace;
     this.materials.wood = new THREE.MeshStandardMaterial({
-      map: wood_diff,
-      aoMap: wood_arm,
-      normalMap: wood_nor,
-      // displacementMap: wood_disp,
+      map: ballTextures.wood_diff,
+      aoMap: ballTextures.wood_arm,
+      normalMap: ballTextures.wood_nor,
+      // displacementMap: ballTextures.wood_disp,
       
       // displacementScale: 0.01,
       roughness: 0.8,

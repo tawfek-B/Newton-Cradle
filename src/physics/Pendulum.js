@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-import { PHYSICS } from '../core/Constants.js';
+import { MATERIALS, PHYSICS } from '../core/Constants.js';
 
 import {
     getRopeGeometry,
@@ -40,7 +40,7 @@ function resetBallToSafeState(ball) {
     }
 }
 
-export function stepPendulumSubstep(ball, h, damping, gravityVec) {
+export function stepPendulumSubstep(ball, h, damping, gravityVec, dampingToggles) {
     const totalForce =
         gravityVec.clone()
             .multiplyScalar(ball.mass);
@@ -57,7 +57,7 @@ export function stepPendulumSubstep(ball, h, damping, gravityVec) {
         );
 
     integrateSemiImplicitEuler(ball, accel, h);
-    applyDamping(ball, h, damping);
+    applyDamping(ball, h, damping, MATERIALS[ball.currentMaterialType.toUpperCase()].damping, dampingToggles);
 
     if (PHYSICS.AIR_DRAG_QUADRATIC > 0) {
         const speed = ball.vel.length();

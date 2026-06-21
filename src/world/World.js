@@ -3,24 +3,21 @@ import { createCradleArm } from './Cradle.js';
 import { EXRLoader } from 'three/examples/jsm/Addons.js';
 import { createTable } from './Table.js';
 import { PHYSICS } from '../core/Constants.js';
-import { initializePlanets, spaceTexture, issTexture } from '../utils/PlanetTextures.js';
+import { planetsTex, spaceTexture, issTexture } from '../utils/PlanetTextures.js';
 
 export const scene = new THREE.Scene();
 
 export let planets = [];
 
-await initializePlanets().then(loadedPlanets => {
-  planets = loadedPlanets;
+planets = planetsTex;
 
-  loadedPlanets.forEach(planet => {
-    scene.add(planet.mesh);
-  });
+// Add all planets to the scene (hidden)
+planets.forEach(planet => {
+  scene.add(planet.mesh);
+});
 
-  console.log('All planets initialized and added to scene');
+console.log('All planets initialized and added to scene');
 
-}).catch(err => console.error('Planet initialization failed', err));
-
-console.log(planets)
 
 export let currentEnvironment = null;
 
@@ -31,7 +28,7 @@ let exr = exrLoader.load('/vintage_measuring_lab_2k.exr', (texture) => {
 
   currentEnvironment = texture;
 
-  
+
   scene.background = texture;
   scene.environment = texture;
 });
@@ -52,18 +49,52 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
 document.body.appendChild(renderer.domElement);
 
-const light = new THREE.DirectionalLight(0xffffff, 3);
-light.position.set(-2, 5, -4);
-light.castShadow = true;
-light.shadow.mapSize.width = 1024;
-light.shadow.mapSize.height = 1024;
-light.shadow.camera.near = 0.5;
-light.shadow.camera.far = 200;
-light.shadow.camera.left = -10;
-light.shadow.camera.right = 10;
-light.shadow.camera.top = 10;
-light.shadow.camera.bottom = -10;
-scene.add(light);
+const light1 = new THREE.DirectionalLight(0xffffff, 2);
+light1.position.set(4, 5, -8);
+light1.castShadow = true;
+light1.shadow.mapSize.width = 1024;
+light1.shadow.mapSize.height = 1024;
+light1.shadow.camera.near = 0.5;
+light1.shadow.camera.far = 200;
+light1.shadow.camera.left = -10;
+light1.shadow.camera.right = 10;
+light1.shadow.camera.top = 10;
+light1.shadow.camera.bottom = -10;
+scene.add(light1);
+
+const light2 = new THREE.DirectionalLight(0xffffff, 2);
+light2.position.set(4, 5, 0);
+light2.castShadow = true;
+light2.shadow.mapSize.width = 1024;
+light2.shadow.mapSize.height = 1024;
+light2.shadow.camera.near = 0.5;
+light2.shadow.camera.far = 200;
+light2.shadow.camera.left = -10;
+light2.shadow.camera.right = 10;
+light2.shadow.camera.top = 10;
+light2.shadow.camera.bottom = -10;
+scene.add(light2);
+
+const light3 = new THREE.DirectionalLight(0xffffff, 2);
+light3.position.set(4, 5, 8);
+light3.castShadow = true;
+light3.shadow.mapSize.width = 1024;
+light3.shadow.mapSize.height = 1024;
+light3.shadow.camera.near = 0.5;
+light3.shadow.camera.far = 200;
+light3.shadow.camera.left = -10;
+light3.shadow.camera.right = 10;
+light3.shadow.camera.top = 10;
+light3.shadow.camera.bottom = -10;
+scene.add(light3);
+
+// const lightHelper1 = new THREE.DirectionalLightHelper(light1)
+// const lightHelper2 = new THREE.DirectionalLightHelper(light2)
+// const lightHelper3 = new THREE.DirectionalLightHelper(light3)
+
+// scene.add(lightHelper1)
+// scene.add(lightHelper2)
+// scene.add(lightHelper3)
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -91,18 +122,18 @@ scene.add(rightArm);
 const table = new createTable();
 scene.add(table)
 
-export let currentPlanet = null;
+export let currentPlanet = 'EARTH';
 
 export function handlePlanetChange(newPlanetName) {
   const pickedPlanet = planets.find(p => p.name === newPlanetName);
-  
-  if ((!pickedPlanet || !pickedPlanet.mesh) && (newPlanetName !== 'EARTH' && newPlanetName !== 'SPACE' && newPlanetName !== 'ISS')) {
+
+  if ((!pickedPlanet || !pickedPlanet.mesh) && (newPlanetName !== 'EARTH' && newPlanetName !== 'SPACE' && newPlanetName !== 'ISS' && newPlanetName !== 'NEARTH')) {
     console.warn(`Planet "${newPlanetName}" not found`);
     return;
   }
 
   // Hide previous planet
-  if (currentPlanet && currentPlanet.mesh) {
+  if (currentPlanet && currentPlanet?.mesh) {
     disposePlanet(currentPlanet);
   }
 
@@ -110,25 +141,26 @@ export function handlePlanetChange(newPlanetName) {
     pickedPlanet.mesh.visible = true;
   }
 
-  
   // Environment logic
-  if (newPlanetName === 'EARTH') {
+  if (newPlanetName === 'EARTH' || newPlanetName === 'NEARTH') {
     table.visible = true;
     if (exr) {
       scene.background = exr;
       scene.environment = exr;
-      console.log("Earth EXR loaded");
     } else {
-      console.log("Earth EXR not loaded");
+      // console.log("Earth EXR not loaded");
     }
   } else {
     table.visible = false;
     scene.background = newPlanetName === 'ISS' ? issTexture : spaceTexture;
-    console.log(scene.back)
     scene.environment = null;
   }
 
-  currentPlanet = pickedPlanet;
+  if (newPlanetName === 'EARTH' || newPlanetName === 'NEARTH' || newPlanetName === 'ISS' || newPlanetName === 'SPACE')
+    currentPlanet = newPlanetName;
+  else
+    currentPlanet = pickedPlanet
+
   console.log(`Switched to: ${newPlanetName === 'EARTH' ? "EARTH" : pickedPlanet?.name || newPlanetName}`);
 }
 

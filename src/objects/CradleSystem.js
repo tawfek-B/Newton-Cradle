@@ -1,13 +1,20 @@
 import * as THREE from 'three';
+import { currentPlanet } from '../world/World.js';
 
 import {
     stepPendulumSubstep,
     computePendulumAnalytics
 } from '../physics/Pendulum.js';
 
+import {
+    applyTemperatureDamping,
+    applySoundDamping
+} from '../physics/Damping.js';
+
 import { computeEnergy } from '../physics/Energy.js';
 
 import {
+    computeHertzianForce,
     detectCollision,
     resolveCollision
 } from '../physics/Collision.js';
@@ -16,7 +23,7 @@ import {
     playCollisionSound
 } from '../audio/CollisionAudio.js';
 
-import { PHYSICS, COLLISION } from '../core/Constants.js';
+import { PHYSICS, COLLISION, ENERGY } from '../core/Constants.js';
 
 import { degToRad } from '../utils/MathUtils.js';
 
@@ -55,7 +62,9 @@ export class CradleSystem {
     update(
         dt,
         globalDamping = 0,
-        gravity = PHYSICS.GRAVITY
+        gravity = PHYSICS.GRAVITY,
+        height = 0.8,
+        dampingToggles
     ) {
         if (!this.balls || this.balls.length === 0) {
             return;
@@ -70,7 +79,10 @@ export class CradleSystem {
 
         const gravityVec = new THREE.Vector3(0, -gravity, 0);
 
-        const effectiveDamping = PHYSICS.AIR_DAMPING + globalDamping;
+        const air_damping = (PHYSICS[`${currentPlanet.name || currentPlanet}_AIR_DAMPING`]) || 0
+
+
+        const effectiveDamping = air_damping + globalDamping;
 
         const currentCollisionPairs = new Set();
 
@@ -83,10 +95,25 @@ export class CradleSystem {
                     ball,
                     h,
                     effectiveDamping,
-                    gravityVec
+                    gravityVec,
+                    dampingToggles
                 );
 
                 if (!ok) break;
+
+                applyTemperatureDamping(
+                    ball,
+                    h,
+                    ENERGY.HEAT_LOSS,
+                    dampingToggles
+                );
+
+                applySoundDamping(
+                    ball,
+                    h,
+                    ENERGY.SOUND_LOSS,
+                    dampingToggles
+                );
             }
 
             const cascadeIters = COLLISION.CASCADE_ITERATIONS;
@@ -107,12 +134,35 @@ export class CradleSystem {
 
                         anyCollision = true;
 
-                        const b1PosBefore = b1.pos.clone();
-                        const b2PosBefore = b2.pos.clone();
-
                         const pid = this.pairId(i, j);
 
+                        // Apply Hertz contact force during this substep
+                        const F = computeHertzianForce(b1, b2);
+
+                        if (F.lengthSq() > 0) {
+
+                            b1.vel.add(
+                                F.clone().multiplyScalar(h / Math.max(b1.mass, 1e-10))
+                            );
+
+                            b2.vel.sub(
+                                F.clone().multiplyScalar(h / Math.max(b2.mass, 1e-10))
+                            );
+                        }
+
+                        // Existing impulse solver
                         const result = resolveCollision(b1, b2);
+
+                        const energyLoss = Math.max(0, result.energyLost || 0);
+                        if (energyLoss > 0) {
+                            const thermalGain = Math.min(0.02, energyLoss * 0.02);
+                            const soundGain = Math.min(0.01, energyLoss * 0.01);
+
+                            b1.temperature = Math.max(0, (b1.temperature ?? 0) + thermalGain);
+                            b2.temperature = Math.max(0, (b2.temperature ?? 0) + thermalGain);
+                            b1.soundLevel = Math.max(0, (b1.soundLevel ?? 0) + soundGain);
+                            b2.soundLevel = Math.max(0, (b2.soundLevel ?? 0) + soundGain);
+                        }
 
                         this.reTightenRope(b1);
                         this.reTightenRope(b2);
@@ -143,20 +193,6 @@ export class CradleSystem {
             }
         }
 
-        for (let i = 0; i < this.balls.length; i++) {
-            for (let j = i + 1; j < this.balls.length; j++) {
-                const b1 = this.balls[i];
-                const b2 = this.balls[j];
-                if (!b1 || !b2) continue;
-
-                if (detectCollision(b1, b2)) {
-
-                    resolveCollision(b1, b2);
-
-                }
-            }
-        }
-
         this.prevCollisionPairs = currentCollisionPairs;
 
         for (const ball of this.balls) {
@@ -166,12 +202,12 @@ export class CradleSystem {
                 gravity
             );
 
-            ball.energy = computeEnergy(ball, gravity);
+            ball.energy = computeEnergy(ball, gravity, height);
         }
     }
 
 
-    resetToAngle(angleDeg, numBallsToMove) {
+    resetToAngle(angleDeg, numBallsToMove, offset, isSymmetric = false) {
         if (!this.balls || this.balls.length === 0) return;
 
         const angleRad = degToRad(angleDeg);
@@ -179,13 +215,25 @@ export class CradleSystem {
         for (let i = 0; i < this.balls.length; i++) {
             const ball = this.balls[i];
 
-            const isActive = (
-                angleDeg > 0
-                    ? i >= this.balls.length - numBallsToMove
-                    : i === 0
-            );
+            let isActive = false;
+            let theta = 0;
 
-            const theta = isActive ? angleRad : 0;
+            if (!isSymmetric) {
+                isActive = (
+                    angleDeg > 0
+                        ? i >= this.balls.length - numBallsToMove
+                        : i <= numBallsToMove - 1
+                );
+            theta = isActive ? angleRad : 0;
+
+            }
+            else {
+                numBallsToMove = numBallsToMove <= this.balls.length / 2 ? numBallsToMove : this.balls.length / 2;
+                isActive = ((i <= numBallsToMove - 1) || (i >= this.balls.length - numBallsToMove))
+                theta = isActive ? (i <= numBallsToMove - 1 ? -1 : 1) * angleRad : 0
+            }
+            //move only half the balls if the user wants symmetrical collision but assigns more than half the balls
+
 
             ball.theta = theta;
             ball.prevTheta = theta;
@@ -194,7 +242,7 @@ export class CradleSystem {
             ball.pos.set(
                 ball.pivot.x + Math.sin(theta) * ball.length,
                 ball.pivot.y - Math.cos(theta) * ball.length,
-                0
+                isActive ? offset : 0,
             );
 
             ball.vel.set(0, 0, 0);
@@ -222,8 +270,7 @@ export class CradleSystem {
             if (ball.setMaterialType) {
                 ball.setMaterialType(type, index);
             }
-        }); {
-        }
+        });
     }
 
     updateMasses(mass) {
