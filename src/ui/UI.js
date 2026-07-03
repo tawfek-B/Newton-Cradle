@@ -29,13 +29,16 @@ export function createGUI(params, settings, onApplyAngle, numBalls, updateDampin
       numBallsController.setValue(Math.round(value));
     });
 
-    const offsetController = gui.add(params, 'offset', 0, 1, 0.01).name('Offset')
+  const offsetController = gui.add(params, 'offset', 0, 1, 0.01).name('Offset')
 
   const spinController = gui.add(params, 'spinOmega', 0, 20, 1).name("Spin Speed");
 
   gui.add({ apply: () => onApplyAngle(spinController.getValue(), false) }, 'apply').name('Apply Angle');
-  gui.add({ apply: () => onApplyAngle(spinController.getValue(), true) }, 'apply').name('Apply Symmetric Angle');
 
+  const leftBalls = gui.add(params, 'numLeft', 0, Math.ceil(numBalls / 2), 1).name(`Left balls to move (0 - ${Math.ceil(numBalls / 2)}`);
+  const rightBalls = gui.add(params, 'numRight', 0, Math.ceil(numBalls / 2), 1).name(`Right balls to move (0 - ${Math.ceil(numBalls / 2)}`);
+
+  gui.add({ apply: () => onApplyAngle(spinController.getValue(), true, leftBalls.getValue(), rightBalls.getValue()) }, 'apply').name('Apply Symmetric Angle');
 
   const elasticity = gui.add(params, 'elasticity', 0, 1, 0.01).name('Elasticity (e)');
   (setting === 'express' || setting === 'load' || setting !== 'default') ? elasticity.disable() : null;
@@ -64,8 +67,6 @@ export function createGUI(params, settings, onApplyAngle, numBalls, updateDampin
       params.onMaterialChange(value);
     }
   });
-
-
 
   const planets = {
     "Earth": "EARTH",

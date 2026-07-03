@@ -5,6 +5,7 @@ import { updateTrail } from '../rendering/TrailRenderer.js';
 import { updateBallMass } from '../core/SimulationState.js';
 import { payload } from '../payload.json';
 import { ballTextures } from '../utils/TextureLoader.js';
+import { DecalGeometry } from 'three/examples/jsm/geometries/DecalGeometry.js';
 
 function isFiniteVec3(v) {
   return Number.isFinite(v.x)
@@ -31,6 +32,16 @@ export class Ball {
     this.temperature = 0;
     this.soundLevel = 0;
 
+    this.damage = 0;
+    this.maxDamage = 1;
+    this.crackTexture = null;
+    this.baseTexture = null;
+    this.crackIntensity = 0;
+
+    this.decals = [];
+    this.maxDecals = 12;
+    this.lastDecalTime = 0;
+    this.decalCooldown = 0.2; // seconds
     this.momentOfInertia =
       (2 / 5) * this.mass * this.radius * this.radius;
 
@@ -67,7 +78,7 @@ export class Ball {
     };
 
     this.currentMaterialType = "metal";
-    
+
     this.materials.metal = new THREE.MeshStandardMaterial({
       map: ballTextures.metalAlbedo,
       metalnessMap: ballTextures.metalMetal,
@@ -89,7 +100,7 @@ export class Ball {
       // displacementMap: ballTextures.rubberDisp,
       aoMap: ballTextures.rubber_arm,
       normalMap: ballTextures.rubberNor,
-      
+
       // displacementScale: 0.01,
       roughness: 0.9,
       metalness: 0.05,
@@ -103,7 +114,7 @@ export class Ball {
       aoMap: ballTextures.wood_arm,
       normalMap: ballTextures.wood_nor,
       // displacementMap: ballTextures.wood_disp,
-      
+
       // displacementScale: 0.01,
       roughness: 0.8,
       metalness: 0.1,
@@ -123,6 +134,22 @@ export class Ball {
 
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = true;
+
+    this.decalMaterial = new THREE.MeshBasicMaterial({
+      map: ballTextures.crackTexture,
+      transparent: true,
+      alphaTest: 0.05,      // discard nearly transparent pixels
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -4,
+      side: THREE.DoubleSide
+    });
+
+    this.decalMaterial.map = ballTextures.crackTexture;
+    this.decalMaterial.needsUpdate = true;
+
+    this.decalMaterial.map = ballTextures.crackTexture;
+    this.decalMaterial.needsUpdate = true;
 
     this.ropeSegments = 15;
     this.ropeNodeMass = 0.01;
@@ -178,19 +205,19 @@ export class Ball {
     this.restitution = physicalMat.restitution;
     this.friction = physicalMat.friction;
     this.damping = physicalMat.damping;
-    
+
     this.updateMass(payload, ball);
   }
 
   getSurfaceAttachA() {
     const rotated = this.localAttachA.clone()
-        .applyAxisAngle(new THREE.Vector3(0, 1, 0), this.spinAngle);
+      .applyAxisAngle(new THREE.Vector3(0, 1, 0), this.spinAngle);
     return this.pos.clone().add(rotated);
   }
 
   getSurfaceAttachB() {
     const rotated = this.localAttachB.clone()
-        .applyAxisAngle(new THREE.Vector3(0, 1, 0), this.spinAngle);
+      .applyAxisAngle(new THREE.Vector3(0, 1, 0), this.spinAngle);
     return this.pos.clone().add(rotated);
   }
 
@@ -208,6 +235,32 @@ export class Ball {
       this.currentMaterialType = "wood";
       this.setPhysicalMaterial(MATERIALS.WOOD, payload, ball);
     }
+  }
+
+  applyDamage(amount) {
+
+    this.damage += amount;
+    this.damage = Math.min(this.damage, this.maxDamage);
+
+    this.crackMaterial.opacity = this.damage;
+
+    // optional: scale crack visibility
+    this.crackMesh.scale.set(
+      1 + this.damage * 0.05,
+      1 + this.damage * 0.05,
+      1 + this.damage * 0.05
+    );
+  }
+
+  updateCracks() {
+
+    if (!this.lastImpactDir) return;
+
+    const dir = this.lastImpactDir;
+
+    this.crackMesh.lookAt(
+      this.pos.clone().add(dir)
+    );
   }
 
   resetRopes() {
@@ -229,27 +282,27 @@ export class Ball {
         this.pivot.y - this.length,
         0
       );
-  
+
       this.vel.set(0, 0, 0);
-  
+
       this.resetRopes();
     }
-  
+
     this.mesh.position.copy(this.pos);
-  
+
     this.mesh.rotation.y = this.spinAngle;
-  
+
     this.ropeA.syncGeometry();
     this.ropeB.syncGeometry();
-  
+
     this.trailPoints.push(this.pos.clone());
-  
+
     if (this.trailPoints.length > this.maxTrail) {
       this.trailPoints.shift();
     }
 
     this.mesh.rotation.z = this.theta;
-  
+
     updateTrail(this);
   }
 

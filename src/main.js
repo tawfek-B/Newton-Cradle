@@ -42,7 +42,7 @@ if (setting === 'express' || setting === 'custom') {
 
 const isDebugMode = setting === 'load' || setting === 'express' || setting === 'custom';
 
-const NUM_BALLS = isDebugMode ? mainPayload.numberOfBalls : 6;
+const NUM_BALLS = isDebugMode ? mainPayload.numberOfBalls : CRADLE.NUM_BALLS;
 const SPACING = CRADLE.BALL_SPACING;
 
 
@@ -90,6 +90,8 @@ const settings = {
 export const params = {
   angle: 90,
   numBallsToMove: 1,
+  numLeft: 1,
+  numRight: 1,
   offset: 0,
   spinOmega: 0,
   mass: 261.38,
@@ -160,9 +162,9 @@ function updateDampingToggles() {
 params.onMaterialChange = handleMaterialChange;
 params.onPlanetChange = handlePlanetChange;
 
-function setAngle(spin = 0, isSymmetric = false) {
+function setAngle(spin = 0, isSymmetric = false, leftBalls = 0, rightBalls = 0) {
   const oldLength = balls.length;
-  cradle.resetToAngle(params.angle, params.numBallsToMove, params.offset, isSymmetric); // change to maybe a boolean for which ball to move
+  cradle.resetToAngle(params.angle, params.numBallsToMove, params.offset, isSymmetric, leftBalls, rightBalls); // change to maybe a boolean for which ball to move
 
   if (oldLength !== balls.length) {
     Object.assign(balls, cradle.balls);

@@ -66,6 +66,13 @@ export function load() {
     );
     wood_nor.colorSpace = THREE.NoColorSpace;
 
+
+    const crackTexture = textureLoader.load(
+        "/balls/crack.png",
+    );
+    crackTexture.transparent = true;
+    crackTexture.needsUpdate = true;
+
     ballTextures = {
         metalAlbedo,
         metalMetal,
@@ -82,6 +89,8 @@ export function load() {
         wood_arm,
         wood_diff,
         wood_disp,
-        wood_nor
+        wood_nor,
+
+        crackTexture,
     }
 }

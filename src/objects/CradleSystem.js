@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { currentPlanet } from '../world/World.js';
-
+import { currentPlanet, scene } from '../world/World.js';
+import { DecalGeometry } from 'three/examples/jsm/geometries/DecalGeometry.js';
 import {
     stepPendulumSubstep,
     computePendulumAnalytics
@@ -150,6 +150,24 @@ export class CradleSystem {
                             );
                         }
 
+                        const forceMag = F.length();
+
+                        const n = computeHertzianForce(b1, b2).normalize();
+                        const normal = b1.pos.clone().sub(b2.pos).normalize();
+
+                        const position = b1.pos.clone().add(
+                            normal.clone().multiplyScalar(-b1.radius * 1.3)
+                        );
+
+                        const localPos = b1.mesh.worldToLocal(position.clone());
+
+                        spawnDecal(
+                            b1,
+                            position,
+                            normal,
+                            forceMag * 50,
+                            h
+                        );
                         // Existing impulse solver
                         const result = resolveCollision(b1, b2);
 
@@ -207,7 +225,7 @@ export class CradleSystem {
     }
 
 
-    resetToAngle(angleDeg, numBallsToMove, offset, isSymmetric = false) {
+    resetToAngle(angleDeg, numBallsToMove, offset, isSymmetric = false, leftBalls = 0, rightBalls = 0) {
         if (!this.balls || this.balls.length === 0) return;
 
         const angleRad = degToRad(angleDeg);
@@ -224,16 +242,17 @@ export class CradleSystem {
                         ? i >= this.balls.length - numBallsToMove
                         : i <= numBallsToMove - 1
                 );
-            theta = isActive ? angleRad : 0;
-
+                theta = isActive ? angleRad : 0;
             }
             else {
-                numBallsToMove = numBallsToMove <= this.balls.length / 2 ? numBallsToMove : this.balls.length / 2;
-                isActive = ((i <= numBallsToMove - 1) || (i >= this.balls.length - numBallsToMove))
-                theta = isActive ? (i <= numBallsToMove - 1 ? -1 : 1) * angleRad : 0
-            }
-            //move only half the balls if the user wants symmetrical collision but assigns more than half the balls
+                isActive = ((i < leftBalls) || i >= this.balls.length - rightBalls);
+                //this is used if the user put over half for both left and right while the numbe rof balls is odd
+                //for example move 3 from the left and 3 from the right, while the number of balls is 5
+                //then it will randomly choose one ball from the middle to move either left or right
+                let rand = (leftBalls === Math.ceil(this.balls.length / 2) && rightBalls === Math.ceil(this.balls.length / 2) && (this.balls.length % 2 === 1));
 
+                theta = isActive ? ((i < leftBalls - (rand ? Math.round(Math.random()) : 0)) ? -1 : 1) * angleRad : 0
+            }
 
             ball.theta = theta;
             ball.prevTheta = theta;
@@ -308,4 +327,50 @@ export class CradleSystem {
         }
 
     }
+}
+function spawnDecal(ball, position, normal, forceMag, dt) {
+    if (forceMag < 0.2) return;
+
+    ball.lastDecalTime += dt;
+    if (ball.lastDecalTime < ball.decalCooldown) return;
+    ball.lastDecalTime = 0;
+
+    if (ball.decals.length >= ball.maxDecals) {
+        const old = ball.decals.shift();
+        ball.mesh.remove(old);
+        old.geometry.dispose();
+        old.material.dispose();
+    }
+
+    // Convert the world-space hit position/normal into the ball's LOCAL space
+    ball.mesh.updateMatrixWorld();
+    const invMatrix = ball.mesh.matrixWorld.clone().invert();
+
+    const localPos = position.clone().applyMatrix4(invMatrix);
+    const localNormal = normal.clone().transformDirection(invMatrix).normalize();
+
+    // nudge slightly inward along the local normal so it hugs the curvature
+    localPos.add(localNormal.clone().multiplyScalar(-0.01));
+
+    const dummy = new THREE.Object3D();
+    dummy.position.copy(localPos);
+    dummy.lookAt(localPos.clone().add(localNormal));
+
+    // Proxy mesh: same geometry as the ball, but identity transform,
+    // so DecalGeometry does its projection math in LOCAL space
+    const proxy = new THREE.Mesh(ball.mesh.geometry);
+    proxy.updateMatrixWorld();
+
+    const decalGeo = new DecalGeometry(
+        proxy,
+        localPos,
+        dummy.rotation,
+        new THREE.Vector3(0.25, 0.25, 0.15) // shallow depth relative to radius 0.2
+    );
+
+    const decalMesh = new THREE.Mesh(decalGeo, ball.decalMaterial);
+    decalMesh.renderOrder = 999;
+
+    ball.mesh.add(decalMesh);
+    ball.decals.push(decalMesh);
 }
